@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply bg-base dark:bg-base-dark text-ink dark:text-ink-dark font-body antialiased;
+    /* subtle grain-free gradient so large flat neomorphic areas don't look sterile */
+    background-image: radial-gradient(circle at 15% 0%, rgba(255,255,255,0.5), transparent 40%);
+  }
+
+  h1, h2, h3, h4 {
+    @apply font-display text-ink dark:text-ink-dark;
+  }
+
+  /* Visible focus ring everywhere — neomorphism has low inherent contrast,
+     so keyboard focus needs an explicit, high-contrast indicator (WCAG 2.4.7). */
+  :focus-visible {
+    outline: 3px solid #8B6BC7;
+    outline-offset: 3px;
+    border-radius: 0.5rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  /* Base neomorphic "soft card" surface used throughout the app */
+  .neo-card {
+    @apply bg-surface dark:bg-surface-dark rounded-neo shadow-neo dark:shadow-neo-dark transition-shadow;
+  }
+
+  /* A tappable neomorphic control: raised at rest, presses inward on click */
+  .neo-btn {
+    @apply bg-surface dark:bg-surface-dark rounded-neo-lg shadow-neo dark:shadow-neo-dark
+           active:shadow-neo-inset dark:active:shadow-neo-inset-dark
+           active:animate-press transition-shadow duration-150 select-none;
+  }
+
+  /* A logged/selected state — permanently pressed-in, communicates "recorded" */
+  .neo-pressed {
+    @apply bg-surface dark:bg-surface-dark rounded-neo shadow-neo-inset dark:shadow-neo-inset-dark;
+  }
+
+  /* Ensure text on colored fertility-zone chips always meets 4.5:1 contrast */
+  .zone-chip {
+    @apply text-sm font-medium px-2.5 py-1 rounded-full inline-flex items-center gap-1.5;
+  }
+}
