@@ -12,11 +12,11 @@ interface CalendarProps {
 }
 
 const ZONE_STYLES: Record<DayFertility["zone"], string> = {
-  period: "bg-amber-soft text-amber border border-amber/30",
-  fertile: "bg-violet-soft text-violet border border-violet/30",
-  ovulation: "bg-peak-soft text-peak border border-peak/40",
-  luteal: "bg-transparent text-ink-muted dark:text-ink-muted-dark",
-  low: "bg-sage-soft text-sage border border-sage/30",
+  period: "bg-amber-soft text-amber border border-amber/40",       // orange
+  fertile: "bg-violet-soft text-violet border border-violet/40",    // purple
+  ovulation: "bg-peak-soft text-peak border border-peak/50 font-semibold", // red
+  low: "bg-sage-soft text-sage border border-sage/40",               // green
+  luteal: "bg-sage-soft text-sage border border-sage/40",            // same as low (4-color scheme)
 };
 
 export default function Calendar({ prediction, settings, loggedDates, selectedDate, onSelectDate }: CalendarProps) {
@@ -77,8 +77,8 @@ export default function Calendar({ prediction, settings, loggedDates, selectedDa
       <div className="flex flex-wrap gap-3 mt-5 text-xs">
         <Legend swatch="bg-amber" label="Period" />
         <Legend swatch="bg-violet" label="Fertile window" />
-        <Legend swatch="bg-peak" label="Ovulation (peak)" />
-        <Legend swatch="bg-sage" label="Low fertility / safer" />
+        <Legend swatch="bg-peak" label="Ovulation day" />
+        <Legend swatch="bg-sage" label="Low fertility" />
       </div>
     </div>
   );

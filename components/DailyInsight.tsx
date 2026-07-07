@@ -3,16 +3,26 @@
 import { useState } from "react";
 import { DayFertility } from "@/lib/predictions";
 
+export interface LoggedEntry {
+  flow_intensity?: string | null;
+  symptoms?: string[] | null;
+  mood?: string[] | null;
+  sexual_activity?: { occurred?: boolean; protection?: string | null } | null;
+  basal_body_temp?: number | null;
+  notes?: string | null;
+}
+
 interface DailyInsightProps {
   fertility: DayFertility;
+  loggedEntry?: LoggedEntry | null;
 }
 
 const ZONE_COPY: Record<DayFertility["zone"], { title: string; blurb: string }> = {
   period: { title: "Period day", blurb: "Bleeding phase of the cycle. Pregnancy is very unlikely on a typical period day, but not impossible in unusually short cycles." },
-  fertile: { title: "Fertile window", blurb: "Sperm can survive up to 5 days, so days leading into ovulation carry real conception risk if sex is unprotected." },
-  ovulation: { title: "Ovulation day (peak fertility)", blurb: "The egg is released and viable for roughly 12–24 hours — this is the single highest-probability day in the cycle." },
-  luteal: { title: "Luteal phase", blurb: "After ovulation, the egg is no longer viable. Probability drops sharply but isn't literally zero due to date-prediction uncertainty." },
-  low: { title: "Lower-fertility day", blurb: "Outside the estimated fertile window. Risk is low but this is a statistical estimate, not a guarantee." },
+  fertile: { title: "Fertile window", blurb: "Sperm can survive up to 5 days, so days leading into and just after ovulation carry real conception risk if sex is unprotected." },
+  ovulation: { title: "Ovulation day", blurb: "The egg is released and viable for roughly 12–24 hours — this is the single highest-probability day in the cycle, estimated here as day 14 of the cycle." },
+  luteal: { title: "Low-fertility day", blurb: "Outside the estimated fertile window. Risk is low but this is a statistical estimate, not a guarantee." },
+  low: { title: "Low-fertility day", blurb: "Outside the estimated fertile window. Risk is low but this is a statistical estimate, not a guarantee." },
 };
 
 const TOOLTIPS: Record<string, string> = {
@@ -21,9 +31,18 @@ const TOOLTIPS: Record<string, string> = {
   bbt: "Basal body temperature (BBT) is your resting temperature taken first thing in the morning. It rises slightly (~0.3–0.5°C) after ovulation due to progesterone, which can help confirm ovulation happened after the fact.",
 };
 
-export default function DailyInsight({ fertility }: DailyInsightProps) {
+export default function DailyInsight({ fertility, loggedEntry }: DailyInsightProps) {
   const [openTip, setOpenTip] = useState<string | null>(null);
   const copy = ZONE_COPY[fertility.zone];
+
+  const hasLoggedData =
+    loggedEntry &&
+    (loggedEntry.flow_intensity && loggedEntry.flow_intensity !== "none" ||
+      (loggedEntry.symptoms && loggedEntry.symptoms.length > 0) ||
+      (loggedEntry.mood && loggedEntry.mood.length > 0) ||
+      loggedEntry.sexual_activity?.occurred ||
+      loggedEntry.basal_body_temp ||
+      loggedEntry.notes);
 
   return (
     <div className="neo-card p-6 space-y-4">
@@ -31,6 +50,30 @@ export default function DailyInsight({ fertility }: DailyInsightProps) {
         <h3 className="font-display text-lg">{new Date(fertility.date).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</h3>
         {fertility.cycleDay && <span className="font-mono text-xs text-ink-muted dark:text-ink-muted-dark">Cycle day {fertility.cycleDay}</span>}
       </div>
+
+      {hasLoggedData && (
+        <div className="neo-inset rounded-neo p-5 space-y-2">
+          <p className="text-xs uppercase tracking-wide text-ink-muted dark:text-ink-muted-dark">What you logged</p>
+          {loggedEntry?.flow_intensity && loggedEntry.flow_intensity !== "none" && (
+            <p className="text-sm"><span className="text-ink-muted dark:text-ink-muted-dark">Flow:</span> <span className="capitalize">{loggedEntry.flow_intensity}</span></p>
+          )}
+          {loggedEntry?.symptoms && loggedEntry.symptoms.length > 0 && (
+            <p className="text-sm"><span className="text-ink-muted dark:text-ink-muted-dark">Symptoms:</span> {loggedEntry.symptoms.join(", ")}</p>
+          )}
+          {loggedEntry?.mood && loggedEntry.mood.length > 0 && (
+            <p className="text-sm"><span className="text-ink-muted dark:text-ink-muted-dark">Mood:</span> {loggedEntry.mood.join(", ")}</p>
+          )}
+          {loggedEntry?.sexual_activity?.occurred && (
+            <p className="text-sm"><span className="text-ink-muted dark:text-ink-muted-dark">Sexual activity:</span> logged{loggedEntry.sexual_activity.protection ? ` (${loggedEntry.sexual_activity.protection})` : ""}</p>
+          )}
+          {loggedEntry?.basal_body_temp && (
+            <p className="text-sm"><span className="text-ink-muted dark:text-ink-muted-dark">BBT:</span> {loggedEntry.basal_body_temp}°C</p>
+          )}
+          {loggedEntry?.notes && (
+            <p className="text-sm"><span className="text-ink-muted dark:text-ink-muted-dark">Notes:</span> {loggedEntry.notes}</p>
+          )}
+        </div>
+      )}
 
       <div className="neo-inset rounded-neo p-5 space-y-2">
         <p className="text-sm font-medium">{copy.title}</p>

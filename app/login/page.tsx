@@ -16,13 +16,23 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    const { error } = mode === "signin"
-      ? await supabase.auth.signInWithPassword({ email, password })
-      : await supabase.auth.signUp({ email, password, options: { emailRedirectTo: `${location.origin}/dashboard` } });
-    setLoading(false);
-    if (error) setError(error.message);
-    else if (mode === "signin") location.href = "/dashboard";
-    else setMagicSent(true); // signup requires email confirmation
+    if (mode === "signin") {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      setLoading(false);
+      if (error) setError(error.message);
+      else location.href = "/dashboard";
+    } else {
+      const { data, error } = await supabase.auth.signUp({
+        email, password,
+        options: { emailRedirectTo: `${location.origin}/dashboard` },
+      });
+      setLoading(false);
+      if (error) setError(error.message);
+      // If email confirmation is off, Supabase returns a session immediately —
+      // send the user straight into onboarding instead of "check your inbox".
+      else if (data.session) location.href = "/onboarding";
+      else setMagicSent(true);
+    }
   };
 
   const handleOAuth = async (provider: "google" | "apple") => {
@@ -47,13 +57,13 @@ export default function LoginPage() {
               <div>
                 <label htmlFor="email" className="text-xs uppercase tracking-wide text-ink-muted dark:text-ink-muted-dark mb-1 block">Email</label>
                 <input id="email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                  className="neo-inset-sm rounded-neo w-full p-3 bg-transparent outline-none" />
+                  className="neo-inset-sm rounded-neo w-full p-3 bg-transparent outline-none border border-ink-muted/30 focus:border-violet" />
               </div>
               <div>
                 <label htmlFor="password" className="text-xs uppercase tracking-wide text-ink-muted dark:text-ink-muted-dark mb-1 block">Password</label>
                 <input id="password" type="password" required minLength={8} autoComplete={mode === "signin" ? "current-password" : "new-password"}
                   value={password} onChange={(e) => setPassword(e.target.value)}
-                  className="neo-inset-sm rounded-neo w-full p-3 bg-transparent outline-none" />
+                  className="neo-inset-sm rounded-neo w-full p-3 bg-transparent outline-none border border-ink-muted/30 focus:border-violet" />
               </div>
               {error && <p className="text-sm text-rose" role="alert">{error}</p>}
               <button type="submit" disabled={loading} className="neo-btn w-full py-3 font-medium bg-gradient-to-br from-rose to-violet text-white disabled:opacity-60">

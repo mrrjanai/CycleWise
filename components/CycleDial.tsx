@@ -39,7 +39,7 @@ export default function CycleDial({ prediction, cycleLength }: CycleDialProps) {
             <linearGradient id="cycleArc" x1="0%" y1="0%" x2="100%" y2="100%">
               <stop offset="0%" stopColor="#FF8FAB" />
               <stop offset="55%" stopColor="#8B6BC7" />
-              <stop offset="100%" stopColor="#B4569E" />
+              <stop offset="100%" stopColor="#E0524F" />
             </linearGradient>
           </defs>
           {/* carved track */}

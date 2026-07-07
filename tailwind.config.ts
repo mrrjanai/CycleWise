@@ -30,7 +30,7 @@ const config: Config = {
         violet: { DEFAULT: "#8B6BC7", soft: "#DCD1F5" },
         sage: { DEFAULT: "#7FBF8F", soft: "#DCF0DF" },     // safe / low-fertility days
         amber: { DEFAULT: "#F0A860", soft: "#FBE3C7" },     // period days
-        peak: { DEFAULT: "#B4569E", soft: "#F3D6EA" },      // ovulation / peak fertility
+        peak: { DEFAULT: "#E0524F", soft: "#FBDAD9" },      // ovulation (red)
       },
       fontFamily: {
         display: ["var(--font-fraunces)", "ui-serif", "Georgia", "serif"],

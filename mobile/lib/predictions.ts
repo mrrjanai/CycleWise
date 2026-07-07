@@ -99,9 +99,14 @@ export function predictCycle(
   }
 
   const nextPeriodEnd = addDays(nextPeriodStart, settings.avgPeriodLength - 1);
-  const ovulationDate = addDays(nextPeriodStart, -settings.lutealPhaseLength);
-  const fertileWindowStart = addDays(ovulationDate, -5);
-  const fertileWindowEnd = addDays(ovulationDate, 1);
+
+  // Ovulation model: fixed day 14 of the current cycle (counting the period
+  // start as day 1), with a symmetric ±4 day fertile window around it. This
+  // is the simplified "day 14" rule many people are already familiar with,
+  // as opposed to a luteal-phase-relative estimate.
+  const ovulationDate = lastPeriodStart ? addDays(lastPeriodStart, 13) : addDays(today, 13);
+  const fertileWindowStart = addDays(ovulationDate, -4);
+  const fertileWindowEnd = addDays(ovulationDate, 4);
 
   const currentCycleDay = lastPeriodStart ? diffDays(lastPeriodStart, today) + 1 : null;
 
@@ -140,14 +145,16 @@ export interface DayFertility {
  * "Timing of sexual intercourse in relation to ovulation", NEJM 1995) and
  * are presented as ranges, not false-precision point estimates.
  */
-const DAY_OFFSET_PROBABILITY: Record<number, [number, number]> = {
-  "-5": [0, 2],
-  "-4": [3, 9],
-  "-3": [7, 17],
-  "-2": [14, 25],
-  "-1": [19, 28],
+const DAY_OFFSET_PROBABILITY: Record<string, [number, number]> = {
+  "-4": [1, 4],
+  "-3": [5, 10],
+  "-2": [10, 20],
+  "-1": [17, 26],
   "0": [23, 33],   // ovulation day (peak)
-  "1": [8, 15],
+  "1": [17, 26],
+  "2": [8, 15],
+  "3": [3, 8],
+  "4": [1, 3],
 };
 
 export function getDayFertility(
@@ -173,15 +180,16 @@ export function getDayFertility(
   } else if (offsetFromOvulation === 0) {
     zone = "ovulation";
     pct = DAY_OFFSET_PROBABILITY["0"];
-  } else if (offsetFromOvulation >= -5 && offsetFromOvulation <= 1) {
+  } else if (offsetFromOvulation >= -4 && offsetFromOvulation <= 4) {
     zone = "fertile";
     pct = DAY_OFFSET_PROBABILITY[String(offsetFromOvulation)] ?? [1, 5];
-  } else if (offsetFromOvulation > 1) {
-    zone = "luteal";
-    pct = [0, 2];
   } else {
+    // Everything outside the +/-4 day fertile window (both pre- and
+    // post-ovulation) is treated as one "low fertility" zone, per the
+    // simplified 4-color scheme: green (low), red (ovulation),
+    // purple (fertile window), orange (period).
     zone = "low";
-    pct = [1, 4];
+    pct = [0, 2];
   }
 
   const label: DayFertility["pregnancyProbabilityLabel"] =

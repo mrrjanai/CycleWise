@@ -12,7 +12,7 @@ export async function middleware(request: NextRequest) {
         getAll() {
           return request.cookies.getAll();
         },
-        setAll(cookiesToSet: {name: string; value: string; options?: any }[]) {
+        setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
           response = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
@@ -25,7 +25,8 @@ export async function middleware(request: NextRequest) {
 
   const isAuthRoute = request.nextUrl.pathname.startsWith("/login") ||
                       request.nextUrl.pathname.startsWith("/signup");
-  const isProtectedRoute = request.nextUrl.pathname.startsWith("/dashboard");
+  const isProtectedRoute = request.nextUrl.pathname.startsWith("/dashboard") ||
+                            request.nextUrl.pathname.startsWith("/onboarding");
 
   if (!user && isProtectedRoute) {
     const url = request.nextUrl.clone();
