@@ -140,7 +140,7 @@ export interface DayFertility {
  * "Timing of sexual intercourse in relation to ovulation", NEJM 1995) and
  * are presented as ranges, not false-precision point estimates.
  */
-const DAY_OFFSET_PROBABILITY: Record<number, [number, number]> = {
+const DAY_OFFSET_PROBABILITY: Record<string, [number, number]> = {
   "-5": [0, 2],
   "-4": [3, 9],
   "-3": [7, 17],
