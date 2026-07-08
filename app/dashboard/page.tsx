@@ -8,6 +8,8 @@ import CycleDial from "@/components/CycleDial";
 import Calendar from "@/components/Calendar";
 import DailyInsight, { LoggedEntry } from "@/components/DailyInsight";
 import LogPeriodModal from "@/components/LogPeriodModal";
+import Sidebar from "@/components/Sidebar";
+import PinGate from "@/components/PinGate";
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
@@ -20,6 +22,8 @@ interface DailyLogRow {
   mood: string | string[] | null;
   sexual_activity: string | { occurred?: boolean; protection?: string | null } | null;
   basal_body_temp: number | null;
+  medications: string | { name: string; dose: string }[] | null;
+  tests: string | { type: string; result: string }[] | null;
   notes: string | null;
 }
 
@@ -43,6 +47,7 @@ export default function DashboardPage() {
   const [logsByDate, setLogsByDate] = useState<Record<string, LoggedEntry>>({});
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [futureDateMessage, setFutureDateMessage] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -53,7 +58,7 @@ export default function DashboardPage() {
       supabase.from("cycles").select("start_date, cycle_length, period_length").eq("user_id", user.id).order("start_date", { ascending: false }),
       supabase
         .from("daily_logs")
-        .select("log_date, flow_intensity, symptoms, mood, sexual_activity, basal_body_temp, notes")
+        .select("log_date, flow_intensity, symptoms, mood, sexual_activity, basal_body_temp, medications, tests, notes")
         .eq("user_id", user.id)
         .returns<DailyLogRow[]>(),
     ]);
@@ -83,6 +88,8 @@ export default function DashboardPage() {
         mood: parseJsonField<string[]>(l.mood, []),
         sexual_activity: parseJsonField<{ occurred?: boolean; protection?: string | null }>(l.sexual_activity, { occurred: false }),
         basal_body_temp: l.basal_body_temp,
+        medications: parseJsonField<{ name: string; dose: string }[]>(l.medications, []),
+        tests: parseJsonField<{ type: string; result: string }[]>(l.tests, []),
         notes: l.notes,
       };
     });
@@ -95,66 +102,89 @@ export default function DashboardPage() {
 
   if (loading || !prediction) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-base dark:bg-base-dark">
-        <p className="text-ink-muted dark:text-ink-muted-dark font-body">Loading your cycle…</p>
-      </main>
+      <PinGate>
+        <div className="flex min-h-screen bg-base dark:bg-base-dark">
+          <Sidebar />
+          <main className="flex-1 flex items-center justify-center">
+            <p className="text-ink-muted dark:text-ink-muted-dark font-body">Loading your cycle…</p>
+          </main>
+        </div>
+      </PinGate>
     );
   }
 
   const fertility = getDayFertility(selectedDate, prediction, settings, prediction.lastPeriodStart);
   const isToday = selectedDate === todayISO();
+  const isFuture = selectedDate > todayISO();
   const logButtonLabel = isToday
     ? "+ Log today"
     : `+ Log ${new Date(selectedDate).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`;
 
+  const handleLogClick = () => {
+    if (isFuture) {
+      setFutureDateMessage("You can't log a day that hasn't happened yet — the most recent day you can log is today.");
+      return;
+    }
+    setFutureDateMessage(null);
+    setShowModal(true);
+  };
+
   return (
-    <main className="min-h-screen bg-base dark:bg-base-dark p-4 sm:p-8 max-w-5xl mx-auto">
-      <header className="flex items-center justify-between mb-8">
-        <h1 className="font-display text-3xl">CycleWise</h1>
-        <button
-          onClick={() => setShowModal(true)}
-          className="neo-btn px-5 py-2.5 font-medium bg-gradient-to-br from-rose to-violet text-white"
-        >
-          {logButtonLabel}
-        </button>
-      </header>
+    <PinGate>
+      <div className="flex flex-col md:flex-row min-h-screen bg-base dark:bg-base-dark">
+        <Sidebar />
+        <main className="flex-1 p-4 sm:p-8 max-w-5xl mx-auto w-full">
+          <header className="flex items-center justify-between mb-8">
+            <h1 className="font-display text-3xl hidden md:block">Dashboard</h1>
+            <div className="ml-auto flex flex-col items-end gap-1">
+              <button
+                onClick={handleLogClick}
+                className="neo-btn px-5 py-2.5 font-medium bg-gradient-to-br from-rose to-violet text-white"
+              >
+                {logButtonLabel}
+              </button>
+              {futureDateMessage && <p className="text-xs text-rose max-w-xs text-right">{futureDateMessage}</p>}
+            </div>
+          </header>
 
-      <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-1 space-y-6">
-          <CycleDial prediction={prediction} cycleLength={settings.avgCycleLength} />
-          <div className="neo-card p-6 space-y-3">
-            <h3 className="font-display text-lg">Overview</h3>
-            <Stat label="Next period" value={new Date(prediction.nextPeriodStart).toLocaleDateString(undefined, { month: "short", day: "numeric" })} />
-            <Stat label="Ovulation" value={new Date(prediction.ovulationDate).toLocaleDateString(undefined, { month: "short", day: "numeric" })} />
-            <Stat label="Avg cycle length" value={`${prediction.cycleLengthUsed} days`} />
-            <Stat label="Prediction confidence" value={prediction.confidence} />
-          </div>
-        </div>
+          <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-1 space-y-6">
+              <CycleDial prediction={prediction} cycleLength={settings.avgCycleLength} />
+              <div className="neo-card p-6 space-y-3">
+                <h3 className="font-display text-lg">Overview</h3>
+                <Stat label="Next period" value={new Date(prediction.nextPeriodStart).toLocaleDateString(undefined, { month: "short", day: "numeric" })} />
+                <Stat label="Ovulation" value={new Date(prediction.ovulationDate).toLocaleDateString(undefined, { month: "short", day: "numeric" })} />
+                <Stat label="Avg cycle length" value={`${prediction.cycleLengthUsed} days`} />
+                <Stat label="Prediction confidence" value={prediction.confidence} />
+              </div>
+            </div>
 
-        <div className="lg:col-span-2 space-y-6">
-          <Calendar
-            prediction={prediction}
-            settings={settings}
-            loggedDates={loggedDates}
-            selectedDate={selectedDate}
-            onSelectDate={setSelectedDate}
-          />
-          {/* Tap any day above (past or future) to select it — the insight
-              panel and "+ Log" button below always act on the selected
-              day, not necessarily today. */}
-          <DailyInsight fertility={fertility} loggedEntry={logsByDate[selectedDate] ?? null} />
-        </div>
-      </section>
+            <div className="lg:col-span-2 space-y-6">
+              <Calendar
+                prediction={prediction}
+                settings={settings}
+                loggedDates={loggedDates}
+                selectedDate={selectedDate}
+                onSelectDate={(d) => { setSelectedDate(d); setFutureDateMessage(null); }}
+              />
+              {/* Tap any day above (past or future) to select it — the insight
+                  panel always reflects the selected day, but logging is only
+                  allowed for today or earlier. */}
+              <DailyInsight fertility={fertility} loggedEntry={logsByDate[selectedDate] ?? null} />
+            </div>
+          </section>
 
-      {showModal && (
-        <LogPeriodModal
-          date={selectedDate}
-          existingEntry={logsByDate[selectedDate] ?? null}
-          onClose={() => setShowModal(false)}
-          onSaved={loadData}
-        />
-      )}
-    </main>
+          {showModal && (
+            <LogPeriodModal
+              date={selectedDate}
+              existingEntry={logsByDate[selectedDate] ?? null}
+              onClose={() => setShowModal(false)}
+              onSaved={loadData}
+            />
+          )}
+        </main>
+      </div>
+    </PinGate>
   );
 }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
@@ -10,7 +11,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [magicSent, setMagicSent] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,9 +29,9 @@ export default function LoginPage() {
       setLoading(false);
       if (error) setError(error.message);
       // If email confirmation is off, Supabase returns a session immediately —
-      // send the user straight into onboarding instead of "check your inbox".
+      // send the user straight into onboarding instead of the verify-email page.
       else if (data.session) location.href = "/onboarding";
-      else setMagicSent(true);
+      else location.href = `/verify-email?email=${encodeURIComponent(email)}`;
     }
   };
 
@@ -47,44 +47,39 @@ export default function LoginPage() {
           <p className="text-sm text-ink-muted dark:text-ink-muted-dark">Your cycle, your data, your call.</p>
         </div>
 
-        {magicSent ? (
-          <p className="text-sm text-center text-ink-muted dark:text-ink-muted-dark neo-inset rounded-neo p-4">
-            Check your inbox — we sent a confirmation link to {email}.
-          </p>
-        ) : (
-          <>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label htmlFor="email" className="text-xs uppercase tracking-wide text-ink-muted dark:text-ink-muted-dark mb-1 block">Email</label>
-                <input id="email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                  className="neo-inset-sm rounded-neo w-full p-3 bg-transparent outline-none border border-ink-muted/30 focus:border-violet" />
-              </div>
-              <div>
-                <label htmlFor="password" className="text-xs uppercase tracking-wide text-ink-muted dark:text-ink-muted-dark mb-1 block">Password</label>
-                <input id="password" type="password" required minLength={8} autoComplete={mode === "signin" ? "current-password" : "new-password"}
-                  value={password} onChange={(e) => setPassword(e.target.value)}
-                  className="neo-inset-sm rounded-neo w-full p-3 bg-transparent outline-none border border-ink-muted/30 focus:border-violet" />
-              </div>
-              {error && <p className="text-sm text-rose" role="alert">{error}</p>}
-              <button type="submit" disabled={loading} className="neo-btn w-full py-3 font-medium bg-gradient-to-br from-rose to-violet text-white disabled:opacity-60">
-                {loading ? "Please wait…" : mode === "signin" ? "Sign in" : "Create account"}
-              </button>
-            </form>
-
-            <div className="flex items-center gap-3 text-xs text-ink-muted dark:text-ink-muted-dark">
-              <div className="flex-1 h-px bg-ink-muted/20" /> or <div className="flex-1 h-px bg-ink-muted/20" />
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label htmlFor="email" className="text-xs uppercase tracking-wide text-ink-muted dark:text-ink-muted-dark mb-1 block">Email</label>
+            <input id="email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)}
+              className="neo-inset-sm rounded-neo w-full p-3 bg-transparent outline-none border border-ink-muted/30 focus:border-violet" />
+          </div>
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label htmlFor="password" className="text-xs uppercase tracking-wide text-ink-muted dark:text-ink-muted-dark block">Password</label>
+              {mode === "signin" && <Link href="/forgot-password" className="text-xs text-violet">Forgot password?</Link>}
             </div>
+            <input id="password" type="password" required minLength={8} autoComplete={mode === "signin" ? "current-password" : "new-password"}
+              value={password} onChange={(e) => setPassword(e.target.value)}
+              className="neo-inset-sm rounded-neo w-full p-3 bg-transparent outline-none border border-ink-muted/30 focus:border-violet" />
+          </div>
+          {error && <p className="text-sm text-rose" role="alert">{error}</p>}
+          <button type="submit" disabled={loading} className="neo-btn w-full py-3 font-medium bg-gradient-to-br from-rose to-violet text-white disabled:opacity-60">
+            {loading ? "Please wait…" : mode === "signin" ? "Sign in" : "Create account"}
+          </button>
+        </form>
 
-            <div className="space-y-2">
-              <button onClick={() => handleOAuth("google")} className="neo-btn w-full py-2.5 text-sm font-medium">Continue with Google</button>
-              <button onClick={() => handleOAuth("apple")} className="neo-btn w-full py-2.5 text-sm font-medium">Continue with Apple</button>
-            </div>
+        <div className="flex items-center gap-3 text-xs text-ink-muted dark:text-ink-muted-dark">
+          <div className="flex-1 h-px bg-ink-muted/20" /> or <div className="flex-1 h-px bg-ink-muted/20" />
+        </div>
 
-            <button onClick={() => setMode(mode === "signin" ? "signup" : "signin")} className="text-sm text-violet w-full text-center">
-              {mode === "signin" ? "New here? Create an account" : "Already have an account? Sign in"}
-            </button>
-          </>
-        )}
+        <div className="space-y-2">
+          <button onClick={() => handleOAuth("google")} className="neo-btn w-full py-2.5 text-sm font-medium">Continue with Google</button>
+          <button onClick={() => handleOAuth("apple")} className="neo-btn w-full py-2.5 text-sm font-medium">Continue with Apple</button>
+        </div>
+
+        <button onClick={() => setMode(mode === "signin" ? "signup" : "signin")} className="text-sm text-violet w-full text-center">
+          {mode === "signin" ? "New here? Create an account" : "Already have an account? Sign in"}
+        </button>
       </div>
     </main>
   );

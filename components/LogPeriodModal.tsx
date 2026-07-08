@@ -10,6 +10,9 @@ const MOODS = ["Happy", "Anxious", "Irritable", "Calm", "Sad", "Energetic"];
 // Tap a selected flow again to deselect it (e.g. to undo a mistaken entry).
 const FLOWS = ["spotting", "light", "medium", "heavy"] as const;
 
+interface Medication { name: string; dose: string }
+interface TestEntry { type: "ovulation" | "pregnancy"; result: "positive" | "negative" }
+
 interface LogModalProps {
   date: string;
   existingEntry?: LoggedEntry | null;
@@ -17,8 +20,12 @@ interface LogModalProps {
   onSaved: () => void;
 }
 
+const todayISO = () => new Date().toISOString().slice(0, 10);
+
 export default function LogPeriodModal({ date, existingEntry, onClose, onSaved }: LogModalProps) {
   const supabase = createClient();
+  const isFutureDate = date > todayISO();
+
   const initialFlow = existingEntry?.flow_intensity && existingEntry.flow_intensity !== "none"
     ? (existingEntry.flow_intensity as typeof FLOWS[number])
     : null;
@@ -34,6 +41,15 @@ export default function LogPeriodModal({ date, existingEntry, onClose, onSaved }
   const [protection, setProtection] = useState(existingEntry?.sexual_activity?.protection || "none");
   const [bbt, setBbt] = useState(existingEntry?.basal_body_temp ? String(existingEntry.basal_body_temp) : "");
   const [notes, setNotes] = useState(existingEntry?.notes || "");
+
+  const [medications, setMedications] = useState<Medication[]>(existingEntry?.medications ?? []);
+  const [medName, setMedName] = useState("");
+  const [medDose, setMedDose] = useState("");
+
+  const [tests, setTests] = useState<TestEntry[]>((existingEntry?.tests as TestEntry[]) ?? []);
+  const [testType, setTestType] = useState<TestEntry["type"]>("ovulation");
+  const [testResult, setTestResult] = useState<TestEntry["result"]>("negative");
+
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -56,16 +72,35 @@ export default function LogPeriodModal({ date, existingEntry, onClose, onSaved }
     hideInput();
   };
 
+  const addMedication = () => {
+    if (!medName.trim()) return;
+    setMedications([...medications, { name: medName.trim(), dose: medDose.trim() }]);
+    setMedName("");
+    setMedDose("");
+  };
+  const removeMedication = (i: number) => setMedications(medications.filter((_, idx) => idx !== i));
+
+  const addTest = () => {
+    setTests([...tests, { type: testType, result: testResult }]);
+  };
+  const removeTest = (i: number) => setTests(tests.filter((_, idx) => idx !== i));
+
   const hasExistingRow = !!existingEntry && (
     existingEntry.flow_intensity ||
     (existingEntry.symptoms && existingEntry.symptoms.length > 0) ||
     (existingEntry.mood && existingEntry.mood.length > 0) ||
     existingEntry.sexual_activity?.occurred ||
     existingEntry.basal_body_temp ||
+    (existingEntry.medications && existingEntry.medications.length > 0) ||
+    (existingEntry.tests && existingEntry.tests.length > 0) ||
     existingEntry.notes
   );
 
   const save = async () => {
+    if (isFutureDate) {
+      setError("You can't log a day that hasn't happened yet — the most recent day you can log is today.");
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -81,6 +116,8 @@ export default function LogPeriodModal({ date, existingEntry, onClose, onSaved }
           mood: JSON.stringify(mood),
           sexual_activity: JSON.stringify({ occurred: sexActivity, protection: sexActivity ? protection : null }),
           basal_body_temp: bbt ? parseFloat(bbt) : null,
+          medications: JSON.stringify(medications),
+          tests: JSON.stringify(tests),
           notes: notes || null,
         },
         { onConflict: "user_id,log_date" }
@@ -118,8 +155,6 @@ export default function LogPeriodModal({ date, existingEntry, onClose, onSaved }
       if (!user) throw new Error("Not signed in");
 
       await supabase.from("daily_logs").delete().eq("user_id", user.id).eq("log_date", date);
-      // Best-effort: also remove a cycle row that started on this exact date,
-      // e.g. if this was logged as a period start by mistake.
       await supabase.from("cycles").delete().eq("user_id", user.id).eq("start_date", date);
 
       onSaved();
@@ -139,7 +174,14 @@ export default function LogPeriodModal({ date, existingEntry, onClose, onSaved }
           <button onClick={onClose} aria-label="Close" className="neo-btn w-8 h-8 flex items-center justify-center">✕</button>
         </div>
 
-        {saved ? (
+        {isFutureDate ? (
+          <div className="neo-inset rounded-neo p-6 text-center space-y-2">
+            <p className="font-medium text-rose">Can't log a future day</p>
+            <p className="text-sm text-ink-muted dark:text-ink-muted-dark">
+              The most recent day you can log is today. Come back on {new Date(date).toLocaleDateString(undefined, { month: "short", day: "numeric" })} once it arrives.
+            </p>
+          </div>
+        ) : saved ? (
           <div className="neo-inset rounded-neo p-8 flex flex-col items-center gap-2 text-center">
             <span className="text-3xl">✓</span>
             <p className="font-display text-lg">Saved</p>
@@ -246,6 +288,48 @@ export default function LogPeriodModal({ date, existingEntry, onClose, onSaved }
             <section>
               <label htmlFor="bbt" className="text-xs uppercase tracking-wide text-ink-muted dark:text-ink-muted-dark mb-2 block">Basal body temp (°C)</label>
               <input id="bbt" type="number" step="0.01" value={bbt} onChange={(e) => setBbt(e.target.value)} className="neo-inset-sm rounded-neo w-full p-3 bg-transparent outline-none border border-ink-muted/25" placeholder="36.60" />
+            </section>
+
+            <section>
+              <p className="text-xs uppercase tracking-wide text-ink-muted dark:text-ink-muted-dark mb-2">Medications</p>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {medications.map((m, i) => (
+                  <button key={i} onClick={() => removeMedication(i)} className="neo-btn neo-pressed px-3 py-1.5 text-sm">
+                    {m.name}{m.dose ? ` (${m.dose})` : ""} ✕
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <input type="text" value={medName} onChange={(e) => setMedName(e.target.value)} placeholder="Name"
+                  className="neo-inset-sm rounded-neo flex-1 p-2.5 text-sm bg-transparent outline-none border border-ink-muted/30 focus:border-violet" />
+                <input type="text" value={medDose} onChange={(e) => setMedDose(e.target.value)} placeholder="Dose (optional)"
+                  className="neo-inset-sm rounded-neo flex-1 p-2.5 text-sm bg-transparent outline-none border border-ink-muted/30 focus:border-violet" />
+                <button onClick={addMedication} className="neo-btn px-3 py-1.5 text-sm">Add</button>
+              </div>
+            </section>
+
+            <section>
+              <p className="text-xs uppercase tracking-wide text-ink-muted dark:text-ink-muted-dark mb-2">Tests</p>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {tests.map((t, i) => (
+                  <button key={i} onClick={() => removeTest(i)} className="neo-btn neo-pressed px-3 py-1.5 text-sm capitalize">
+                    {t.type} — {t.result} ✕
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                <select value={testType} onChange={(e) => setTestType(e.target.value as TestEntry["type"])}
+                  className="neo-inset-sm rounded-neo p-2.5 text-sm bg-transparent outline-none border border-ink-muted/30">
+                  <option value="ovulation">Ovulation test</option>
+                  <option value="pregnancy">Pregnancy test</option>
+                </select>
+                <select value={testResult} onChange={(e) => setTestResult(e.target.value as TestEntry["result"])}
+                  className="neo-inset-sm rounded-neo p-2.5 text-sm bg-transparent outline-none border border-ink-muted/30">
+                  <option value="negative">Negative</option>
+                  <option value="positive">Positive</option>
+                </select>
+                <button onClick={addTest} className="neo-btn px-3 py-1.5 text-sm">Add</button>
+              </div>
             </section>
 
             <section>

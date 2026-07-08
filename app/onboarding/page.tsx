@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { hashPin } from "@/lib/pinLock";
 
 const CYCLE_LENGTH_OPTIONS = [21, 28, 35] as const;
 const PERIOD_LENGTH_OPTIONS = [2, 3, 4, 5, 6, 7] as const;
@@ -24,20 +25,29 @@ export default function OnboardingPage() {
   const [periodLengthChoice, setPeriodLengthChoice] = useState<number | "other" | null>(null);
   const [periodLengthOther, setPeriodLengthOther] = useState("");
 
+  const [wantsPin, setWantsPin] = useState<"yes" | "later" | null>(null);
+  const [pinDraft, setPinDraft] = useState("");
+  const [pinConfirmDraft, setPinConfirmDraft] = useState("");
+  const [pinError, setPinError] = useState<string | null>(null);
+
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const resolvedCycleLength = cycleLengthChoice === "other" ? parseInt(cycleLengthOther, 10) : cycleLengthChoice;
   const resolvedPeriodLength = periodLengthChoice === "other" ? parseInt(periodLengthOther, 10) : periodLengthChoice;
 
+  const pinValid = wantsPin === "later" || (wantsPin === "yes" && pinDraft.length === 4 && pinDraft === pinConfirmDraft);
+
   const canSubmit =
     !!lastPeriodStart &&
     !!resolvedCycleLength && resolvedCycleLength >= 15 && resolvedCycleLength <= 60 &&
     !!regularity &&
-    !!resolvedPeriodLength && resolvedPeriodLength >= 1 && resolvedPeriodLength <= 14;
+    !!resolvedPeriodLength && resolvedPeriodLength >= 1 && resolvedPeriodLength <= 14 &&
+    !!wantsPin && pinValid;
 
   const submit = async () => {
     if (!canSubmit) return;
+    if (wantsPin === "yes" && pinDraft !== pinConfirmDraft) { setPinError("PINs don't match."); return; }
     setSaving(true);
     setError(null);
     try {
@@ -70,16 +80,19 @@ export default function OnboardingPage() {
         { onConflict: "user_id,log_date" }
       );
 
-      // 3. Save the user's stated averages + regularity, mark onboarding done.
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .update({
-          avg_cycle_length: resolvedCycleLength,
-          avg_period_length: resolvedPeriodLength,
-          cycle_regularity: regularity,
-          onboarding_complete: true,
-        })
-        .eq("id", user.id);
+      // 3. Save the user's stated averages, regularity, optional PIN, mark onboarding done.
+      const profileUpdate: Record<string, unknown> = {
+        avg_cycle_length: resolvedCycleLength,
+        avg_period_length: resolvedPeriodLength,
+        cycle_regularity: regularity,
+        onboarding_complete: true,
+      };
+      if (wantsPin === "yes") {
+        profileUpdate.app_pin_hash = await hashPin(pinDraft);
+        profileUpdate.app_pin_enabled = true;
+      }
+
+      const { error: profileError } = await supabase.from("profiles").update(profileUpdate).eq("id", user.id);
       if (profileError) throw profileError;
 
       router.push("/dashboard");
@@ -183,6 +196,39 @@ export default function OnboardingPage() {
               value={periodLengthOther} onChange={(e) => setPeriodLengthOther(e.target.value)}
               className="neo-inset-sm rounded-neo w-full p-3 bg-transparent outline-none border border-ink-muted/30 focus:border-violet"
             />
+          )}
+        </section>
+
+        {/* Question 5: optional PIN lock */}
+        <section className="space-y-2">
+          <p className="text-sm font-medium">Want to protect the app with a PIN?</p>
+          <p className="text-xs text-ink-muted dark:text-ink-muted-dark">
+            Adds a quick 4-digit lock screen after you sign in on this device. You can turn this on or off anytime in Settings.
+          </p>
+          <div className="flex gap-2">
+            <button onClick={() => { setWantsPin("yes"); setPinError(null); }}
+              className={`neo-btn px-4 py-2 text-sm flex-1 ${wantsPin === "yes" ? "neo-pressed" : ""}`}>
+              Add a PIN now
+            </button>
+            <button onClick={() => { setWantsPin("later"); setPinError(null); }}
+              className={`neo-btn px-4 py-2 text-sm flex-1 ${wantsPin === "later" ? "neo-pressed" : ""}`}>
+              I'll do it later
+            </button>
+          </div>
+          {wantsPin === "yes" && (
+            <div className="grid grid-cols-2 gap-3 pt-1">
+              <input
+                type="password" inputMode="numeric" maxLength={4} placeholder="4-digit PIN"
+                value={pinDraft} onChange={(e) => setPinDraft(e.target.value.replace(/\D/g, ""))}
+                className="neo-inset-sm rounded-neo p-3 text-center tracking-widest bg-transparent outline-none border border-ink-muted/30 focus:border-violet"
+              />
+              <input
+                type="password" inputMode="numeric" maxLength={4} placeholder="Confirm PIN"
+                value={pinConfirmDraft} onChange={(e) => setPinConfirmDraft(e.target.value.replace(/\D/g, ""))}
+                className="neo-inset-sm rounded-neo p-3 text-center tracking-widest bg-transparent outline-none border border-ink-muted/30 focus:border-violet"
+              />
+              {pinError && <p className="text-sm text-rose col-span-2">{pinError}</p>}
+            </div>
           )}
         </section>
 
