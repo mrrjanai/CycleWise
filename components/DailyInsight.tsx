@@ -9,6 +9,8 @@ export interface LoggedEntry {
   mood?: string[] | null;
   sexual_activity?: { occurred?: boolean; protection?: string | null } | null;
   basal_body_temp?: number | null;
+  medications?: { name: string; dose: string }[] | null;
+  tests?: { type: string; result: string }[] | null;
   notes?: string | null;
 }
 
@@ -42,6 +44,8 @@ export default function DailyInsight({ fertility, loggedEntry }: DailyInsightPro
       (loggedEntry.mood && loggedEntry.mood.length > 0) ||
       loggedEntry.sexual_activity?.occurred ||
       loggedEntry.basal_body_temp ||
+      (loggedEntry.medications && loggedEntry.medications.length > 0) ||
+      (loggedEntry.tests && loggedEntry.tests.length > 0) ||
       loggedEntry.notes);
 
   return (
@@ -68,6 +72,12 @@ export default function DailyInsight({ fertility, loggedEntry }: DailyInsightPro
           )}
           {loggedEntry?.basal_body_temp && (
             <p className="text-sm"><span className="text-ink-muted dark:text-ink-muted-dark">BBT:</span> {loggedEntry.basal_body_temp}°C</p>
+          )}
+          {loggedEntry?.medications && loggedEntry.medications.length > 0 && (
+            <p className="text-sm"><span className="text-ink-muted dark:text-ink-muted-dark">Medications:</span> {loggedEntry.medications.map((m) => `${m.name}${m.dose ? ` (${m.dose})` : ""}`).join(", ")}</p>
+          )}
+          {loggedEntry?.tests && loggedEntry.tests.length > 0 && (
+            <p className="text-sm"><span className="text-ink-muted dark:text-ink-muted-dark">Tests:</span> {loggedEntry.tests.map((t) => `${t.type} — ${t.result}`).join(", ")}</p>
           )}
           {loggedEntry?.notes && (
             <p className="text-sm"><span className="text-ink-muted dark:text-ink-muted-dark">Notes:</span> {loggedEntry.notes}</p>
