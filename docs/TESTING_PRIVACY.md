@@ -2,16 +2,16 @@
 
 ## Testing plan
 
-### 1. Unit tests (`lib/predictions.ts`)
-Pure functions — highest-value tests, no mocking needed.
-- `predictCycle`: no history → defaults to `avgCycleLength`; 1 cycle → low confidence; 6 regular cycles → high confidence, correct average; irregular cycles → correct std-dev-driven confidence downgrade.
-- `getDayFertility`: date inside period → `zone: "period"`; ovulation day → `zone: "ovulation"` with peak probability range; ±5 days around ovulation → `zone: "fertile"`; deep luteal/pre-fertile → low probability.
-- Edge cases: cycle spanning a year boundary (Dec→Jan), a leap-day cycle, a user who opens the app mid-cycle with a stale `lastPeriodStart`.
+### 1. Unit tests (`lib/predictions.ts`) — implemented
+`lib/predictions.test.ts` (Vitest, `npm test`) covers defaults, cycle-day-14 ovulation and the ±4 day window, rolling 6-cycle averages, outlier filtering, confidence levels, projection of future cycles, year-boundary and leap-day dates, and timezone safety. CI runs it in UTC and Africa/Nairobi.
 
-Suggested tooling: Vitest or Jest, e.g.:
+Remaining ideas:
+- Probability label for every offset in `DAY_OFFSET_PROBABILITY` (e.g. -2 → "Moderate", +1 → "High").
+- A user whose average period length is longer than the fertile-window gap (very short cycles).
+
 ```bash
-npm install -D vitest
-npx vitest run lib/predictions.test.ts
+npm test
+TZ=Africa/Nairobi npm test   # date bugs only show up away from UTC
 ```
 
 ### 2. Integration tests (API routes)

@@ -31,27 +31,39 @@ Private, empowering cycle & fertility tracking — web (Next.js) + mobile (Expo/
 - **Data ownership**: every table is scoped by Postgres RLS to `auth.uid()`, enforced at the database layer — not just in application code.
 - **Shared logic**: `lib/predictions.ts` is pure, dependency-free TypeScript, copied (or workspace-shared) into both apps so web and mobile never disagree on a prediction.
 - **Offline**: mobile queues writes locally (AsyncStorage) when offline and flushes them on reconnect; web relies on standard browser caching + can be extended with a service worker for full offline support.
+- **Route protection**: `proxy.ts` (Next.js 16's name for middleware) refreshes the Supabase session on every request and redirects logged-out visitors away from `/dashboard`, `/onboarding`, `/cycles`, `/profile` and `/settings`. API routes return `401` without a session.
+
+## Prediction model
+
+`lib/predictions.ts` is a deliberately simple, transparent calendar model:
+
+- **Cycle length**: rolling average of the last 6 logged cycles (15–60 days only), 28 by default. The spread (std dev) and number of cycles set a `high` / `medium` / `low` confidence.
+- **Ovulation**: cycle day 14, with a fertile window of ±4 days around it.
+- **Future cycles are projected** by repeating the average length, so the calendar shows next month's period, fertile window and ovulation too, and the current cycle rolls forward if a new period hasn't been logged yet.
+- **Dates are timezone-safe**: all math runs in UTC on `YYYY-MM-DD` strings and "today" comes from the user's local calendar. Tests run in UTC and Africa/Nairobi in CI.
 
 ## Repo layout
 ```
 cyclewise/
-  supabase/schema.sql        # DB schema + RLS (run this first)
-  lib/predictions.ts          # cycle prediction & fertility engine
-  lib/supabase/               # web Supabase clients (browser + server)
-  middleware.ts                # session refresh + route protection
-  app/                          # Next.js App Router pages + API routes
-  components/                  # CycleDial, Calendar, DailyInsight, LogPeriodModal
-  mobile/                       # Expo app (App.tsx, screens/, lib/, theme.ts)
-  docs/                         # setup guide, testing & privacy plan
+  supabase/                 # schema.sql + migration_002 + migration_003 (run in order)
+  lib/predictions.ts        # cycle prediction & fertility engine (+ predictions.test.ts)
+  lib/pinLock.ts            # app PIN hashing + per-session unlock
+  lib/supabase/             # web Supabase clients (browser + server)
+  proxy.ts                  # session refresh + route protection
+  app/                      # landing, auth, onboarding, dashboard, cycles, profile, settings, terms, privacy + API routes
+  components/               # CycleDial, Calendar, DailyInsight, LogPeriodModal, Sidebar, Navbar, PinGate
+  mobile/                   # Expo app (App.tsx, screens/, lib/, theme.ts)
+  .github/workflows/        # CI (lint, typecheck, tests, build) + Supabase keep-alive
+  docs/                     # setup guide, testing & privacy plan
 ```
 
 ## Design direction — Neomorphism
 
 The palette is a single soft-lilac hue family (`#E9E4F5` base) so raised/pressed
 neomorphic surfaces read correctly — neomorphism only works on a near-monochrome
-base. Rose→violet gradients mark primary actions; sage marks lower-fertility
-("safer") days, amber marks period days, and a deep magenta ("peak") marks
-ovulation — so the calendar is scannable by color without reading labels.
+base. Rose→violet gradients mark primary actions. The calendar uses four
+colors so it is scannable without reading labels: **orange** = period,
+**purple** = fertile window, **red** = ovulation, **green** = lower fertility.
 
 Typography pairs **Fraunces** (a soft, warm display serif for headings and the
 big "day of cycle" number) with **Inter** for body text and **IBM Plex Mono**
@@ -67,15 +79,28 @@ Accessibility: neomorphism's low inherent contrast is offset with an explicit
 `globals.css`), `aria-pressed`/`aria-label` on all calendar day buttons, and
 `prefers-reduced-motion` support.
 
+## Tech stack
+Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS · Supabase (Auth, Postgres, RLS) · Recharts · Expo / React Native · Vitest · ESLint · GitHub Actions
+
 ## Quick start
-See `docs/SETUP_GUIDE.md` for full instructions. TL;DR:
+See `docs/SETUP_GUIDE.md` for full instructions. TL;DR (Node 20.9+):
 ```bash
-# 1. Run supabase/schema.sql in your Supabase project's SQL editor
+# 1. In the Supabase SQL editor run, in order:
+#    supabase/schema.sql, supabase/migration_002_onboarding.sql, supabase/migration_003_pin_lock.sql
 # 2. Web
 cp .env.example .env.local && npm install && npm run dev
 # 3. Mobile
 cd mobile && npx expo start
 ```
+
+## Checks
+```bash
+npm run lint        # ESLint (next/core-web-vitals + typescript)
+npm run typecheck   # tsc --noEmit
+npm test            # Vitest: prediction engine
+npm run build       # production build
+```
+CI runs all of these on every push.
 
 ## Disclaimer
 CycleWise provides statistical, educational estimates of ovulation and

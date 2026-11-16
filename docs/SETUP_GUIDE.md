@@ -2,11 +2,12 @@
 
 ## 1. Create the Supabase project
 1. Create a project at supabase.com → note the **Project URL** and **anon public key** (Settings → API).
-2. Open the SQL editor → paste and run `supabase/schema.sql`. This creates all tables, triggers, and RLS policies.
+2. Open the SQL editor and run, in this order: `supabase/schema.sql` (tables, triggers, RLS policies), `supabase/migration_002_onboarding.sql`, then `supabase/migration_003_pin_lock.sql`.
 3. Authentication → Providers: enable **Email** (with "Confirm email" on) and **Google** / **Apple** OAuth if you want social login. For Apple sign-in you'll need an Apple Developer account and Services ID; for Google, an OAuth Client ID from Google Cloud Console. Add both callback URLs from Supabase's provider settings into each provider's console.
 4. Authentication → URL Configuration: set your production domain and `cyclewise://` (mobile deep link) as allowed redirect URLs.
 
 ## 2. Web app (Next.js) — local dev
+Requires Node.js 20.9 or newer.
 ```bash
 cd cyclewise
 cp .env.example .env.local        # fill in your Supabase URL + anon key
@@ -21,6 +22,11 @@ Visit `/login` to create an account, then `/dashboard`.
 3. Add environment variables `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` in Vercel's Project Settings → Environment Variables.
 4. Deploy. Add the resulting `https://your-app.vercel.app` domain to Supabase's allowed redirect URLs.
 (Netlify works the same way — set the same two env vars and use the Next.js runtime plugin.)
+
+### GitHub Actions (CI + keep-alive)
+Both workflows live in `.github/workflows/`:
+- `ci.yml` runs lint, type-check, the prediction tests (in UTC and Africa/Nairobi) and a production build on every push. No secrets needed.
+- `keep-alive.yml` pings Supabase once a day so a free-tier project is not paused for inactivity. Add two repo secrets (Settings → Secrets and variables → Actions): `SUPABASE_URL` and `SUPABASE_ANON_KEY`.
 
 ## 4. Mobile app (Expo) — local dev
 ```bash
