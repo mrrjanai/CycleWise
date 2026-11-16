@@ -20,9 +20,8 @@ const ZONE_STYLES: Record<DayFertility["zone"], string> = {
 };
 
 export default function Calendar({ prediction, settings, loggedDates, selectedDate, onSelectDate }: CalendarProps) {
-  const initial = new Date(selectedDate);
-  const [year, setYear] = useState(initial.getFullYear());
-  const [month, setMonth] = useState(initial.getMonth());
+  const [year, setYear] = useState(Number(selectedDate.slice(0, 4)));
+  const [month, setMonth] = useState(Number(selectedDate.slice(5, 7)) - 1);
 
   const days = useMemo(
     () => getMonthFertility(year, month, prediction, settings, prediction.lastPeriodStart),
@@ -67,7 +66,7 @@ export default function Calendar({ prediction, settings, loggedDates, selectedDa
                 ZONE_STYLES[day.zone],
               ].join(" ")}
             >
-              <span>{new Date(day.date).getDate()}</span>
+              <span>{Number(day.date.slice(8, 10))}</span>
               {logged?.hasPeriod && <span className="w-1.5 h-1.5 rounded-full bg-amber" />}
             </button>
           );

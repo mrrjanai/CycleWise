@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { createClient } from "@/lib/supabase/client";
-import { predictCycle, CycleRecord, CyclePrediction, UserFertilitySettings } from "@/lib/predictions";
+import { predictCycle, formatISODate, CycleRecord, CyclePrediction, UserFertilitySettings } from "@/lib/predictions";
 import Sidebar from "@/components/Sidebar";
 
 interface CycleRow {
@@ -21,7 +21,6 @@ export default function CyclesPage() {
 
   const [cycles, setCycles] = useState<CycleRow[]>([]);
   const [prediction, setPrediction] = useState<CyclePrediction | null>(null);
-  const [settings, setSettings] = useState<UserFertilitySettings>({ avgCycleLength: 28, lutealPhaseLength: 14, avgPeriodLength: 5 });
   const [regularity, setRegularity] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -46,7 +45,6 @@ export default function CyclesPage() {
       lutealPhaseLength: profile?.luteal_phase_length ?? 14,
       avgPeriodLength: profile?.avg_period_length ?? 5,
     };
-    setSettings(s);
     setEditCycleLength(s.avgCycleLength);
     setEditPeriodLength(s.avgPeriodLength);
     setRegularity(profile?.cycle_regularity ?? null);
@@ -60,6 +58,8 @@ export default function CyclesPage() {
     setLoading(false);
   }, [supabase, router]);
 
+  // Data fetch on mount: state is only set after the awaited queries resolve.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
   const saveSettings = async () => {
@@ -81,7 +81,7 @@ export default function CyclesPage() {
   const chartData = [...cycles]
     .filter((c) => c.cycle_length)
     .reverse()
-    .map((c) => ({ date: new Date(c.start_date).toLocaleDateString(undefined, { month: "short", day: "numeric" }), length: c.cycle_length }));
+    .map((c) => ({ date: formatISODate(c.start_date, { month: "short", day: "numeric" }), length: c.cycle_length }));
 
   if (loading) {
     return (
@@ -103,8 +103,8 @@ export default function CyclesPage() {
         {/* Upcoming */}
         {prediction && (
           <div className="neo-card p-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <Stat label="Next period" value={new Date(prediction.nextPeriodStart).toLocaleDateString(undefined, { month: "short", day: "numeric" })} />
-            <Stat label="Ovulation" value={new Date(prediction.ovulationDate).toLocaleDateString(undefined, { month: "short", day: "numeric" })} />
+            <Stat label="Next period" value={formatISODate(prediction.nextPeriodStart, { month: "short", day: "numeric" })} />
+            <Stat label="Ovulation" value={formatISODate(prediction.ovulationDate, { month: "short", day: "numeric" })} />
             <Stat label="Avg cycle length" value={`${prediction.cycleLengthUsed}d`} />
             <Stat label="Regularity" value={regularity ?? "—"} />
           </div>
@@ -143,8 +143,8 @@ export default function CyclesPage() {
                 <div key={c.id} className="neo-inset rounded-neo p-4 flex items-center justify-between text-sm">
                   <div>
                     <p className="font-medium">
-                      {new Date(c.start_date).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
-                      {c.end_date && ` – ${new Date(c.end_date).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`}
+                      {formatISODate(c.start_date, { month: "short", day: "numeric", year: "numeric" })}
+                      {c.end_date && ` – ${formatISODate(c.end_date, { month: "short", day: "numeric" })}`}
                     </p>
                     <p className="text-ink-muted dark:text-ink-muted-dark text-xs mt-0.5">
                       {c.period_length ? `${c.period_length} day period` : "Period length not recorded"}

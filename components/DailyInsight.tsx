@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { DayFertility } from "@/lib/predictions";
+import { DayFertility, formatISODate } from "@/lib/predictions";
 
 export interface LoggedEntry {
   flow_intensity?: string | null;
@@ -51,7 +51,7 @@ export default function DailyInsight({ fertility, loggedEntry }: DailyInsightPro
   return (
     <div className="neo-card p-6 space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="font-display text-lg">{new Date(fertility.date).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</h3>
+        <h3 className="font-display text-lg">{formatISODate(fertility.date, { weekday: "long", month: "long", day: "numeric" })}</h3>
         {fertility.cycleDay && <span className="font-mono text-xs text-ink-muted dark:text-ink-muted-dark">Cycle day {fertility.cycleDay}</span>}
       </div>
 

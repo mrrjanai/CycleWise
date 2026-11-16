@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { predictCycle, getDayFertility, CycleRecord, CyclePrediction, UserFertilitySettings } from "@/lib/predictions";
+import { predictCycle, getDayFertility, formatISODate, localDateISO, CycleRecord, CyclePrediction, UserFertilitySettings } from "@/lib/predictions";
 import CycleDial from "@/components/CycleDial";
 import Calendar from "@/components/Calendar";
 import DailyInsight, { LoggedEntry } from "@/components/DailyInsight";
@@ -11,7 +11,7 @@ import LogPeriodModal from "@/components/LogPeriodModal";
 import Sidebar from "@/components/Sidebar";
 import PinGate from "@/components/PinGate";
 
-const todayISO = () => new Date().toISOString().slice(0, 10);
+const todayISO = () => localDateISO();
 
 // Full row shape returned from daily_logs (jsonb columns arrive as strings
 // unless the client parses them, so we normalize on read).
@@ -98,6 +98,8 @@ export default function DashboardPage() {
     setLoading(false);
   }, [supabase, router]);
 
+  // Data fetch on mount: state is only set after the awaited queries resolve.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { loadData(); }, [loadData]);
 
   if (loading || !prediction) {
@@ -118,7 +120,7 @@ export default function DashboardPage() {
   const isFuture = selectedDate > todayISO();
   const logButtonLabel = isToday
     ? "+ Log today"
-    : `+ Log ${new Date(selectedDate).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`;
+    : `+ Log ${formatISODate(selectedDate, { month: "short", day: "numeric" })}`;
 
   const handleLogClick = () => {
     if (isFuture) {
@@ -152,8 +154,8 @@ export default function DashboardPage() {
               <CycleDial prediction={prediction} cycleLength={settings.avgCycleLength} />
               <div className="neo-card p-6 space-y-3">
                 <h3 className="font-display text-lg">Overview</h3>
-                <Stat label="Next period" value={new Date(prediction.nextPeriodStart).toLocaleDateString(undefined, { month: "short", day: "numeric" })} />
-                <Stat label="Ovulation" value={new Date(prediction.ovulationDate).toLocaleDateString(undefined, { month: "short", day: "numeric" })} />
+                <Stat label="Next period" value={formatISODate(prediction.nextPeriodStart, { month: "short", day: "numeric" })} />
+                <Stat label="Ovulation" value={formatISODate(prediction.ovulationDate, { month: "short", day: "numeric" })} />
                 <Stat label="Avg cycle length" value={`${prediction.cycleLengthUsed} days`} />
                 <Stat label="Prediction confidence" value={prediction.confidence} />
               </div>

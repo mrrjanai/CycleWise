@@ -1,6 +1,6 @@
 "use client";
 
-import { CyclePrediction } from "@/lib/predictions";
+import { CyclePrediction, OVULATION_CYCLE_DAY } from "@/lib/predictions";
 
 interface CycleDialProps {
   prediction: CyclePrediction;
@@ -28,8 +28,8 @@ export default function CycleDial({ prediction, cycleLength }: CycleDialProps) {
 
   const phaseLabel =
     day <= (prediction.lastPeriodStart ? 5 : 0) ? "Menstrual phase" :
-    prediction.ovulationDate && day === diffFromStart(prediction) ? "Ovulation" :
-    day < diffFromStart(prediction) ? "Follicular phase" : "Luteal phase";
+    day === OVULATION_CYCLE_DAY ? "Ovulation" :
+    day < OVULATION_CYCLE_DAY ? "Follicular phase" : "Luteal phase";
 
   return (
     <div className="neo-card p-8 flex flex-col items-center gap-4" role="group" aria-label="Cycle progress">
@@ -67,11 +67,4 @@ export default function CycleDial({ prediction, cycleLength }: CycleDialProps) {
       <p className="text-sm text-ink-muted dark:text-ink-muted-dark">{phaseLabel}</p>
     </div>
   );
-}
-
-function diffFromStart(prediction: CyclePrediction) {
-  if (!prediction.lastPeriodStart) return -1;
-  const a = new Date(prediction.lastPeriodStart);
-  const b = new Date(prediction.ovulationDate);
-  return Math.round((b.getTime() - a.getTime()) / 86_400_000) + 1;
 }

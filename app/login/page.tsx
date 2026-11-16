@@ -12,6 +12,9 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // Full page loads (location.href) on purpose after auth: they guarantee the
+  // new session cookie is sent with the next request, so proxy.ts sees it.
+  /* eslint-disable @next/next/no-location-assign-relative-destination */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -34,6 +37,8 @@ export default function LoginPage() {
       else location.href = `/verify-email?email=${encodeURIComponent(email)}`;
     }
   };
+
+  /* eslint-enable @next/next/no-location-assign-relative-destination */
 
   const handleOAuth = async (provider: "google" | "apple") => {
     await supabase.auth.signInWithOAuth({ provider, options: { redirectTo: `${location.origin}/dashboard` } });

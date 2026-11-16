@@ -25,6 +25,8 @@ export default function SettingsPage() {
     // localStorage so it's remembered without needing a DB round trip.
     const stored = localStorage.getItem("cyclewise:theme");
     const isDark = stored === "dark";
+    // localStorage only exists in the browser, so this has to sync after mount.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDarkMode(isDark);
     document.documentElement.classList.toggle("dark", isDark);
 

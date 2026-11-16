@@ -4,11 +4,12 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { hashPin } from "@/lib/pinLock";
+import { localDateISO } from "@/lib/predictions";
 
 const CYCLE_LENGTH_OPTIONS = [21, 28, 35] as const;
 const PERIOD_LENGTH_OPTIONS = [2, 3, 4, 5, 6, 7] as const;
 
-const todayISO = () => new Date().toISOString().slice(0, 10);
+const todayISO = () => localDateISO();
 
 export default function OnboardingPage() {
   const supabase = createClient();

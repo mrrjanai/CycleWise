@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { localDateISO } from "@/lib/predictions";
 import { createClient } from "@/lib/supabase/client";
 import Sidebar from "@/components/Sidebar";
 
@@ -81,7 +82,7 @@ export default function ProfilePage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `cyclewise-data-export-${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = `cyclewise-data-export-${localDateISO()}.json`;
       a.click();
       URL.revokeObjectURL(url);
     } finally {

@@ -1,10 +1,10 @@
 import { useEffect, useState, useCallback } from "react";
 import { View, Text, ScrollView, Pressable, StyleSheet } from "react-native";
 import { supabase } from "../lib/supabaseClient";
-import { predictCycle, getDayFertility, CycleRecord, CyclePrediction, UserFertilitySettings } from "../lib/predictions"; // copy from web/lib/predictions.ts
+import { predictCycle, getDayFertility, formatISODate, localDateISO, CycleRecord, CyclePrediction, UserFertilitySettings } from "../lib/predictions"; // copy from web/lib/predictions.ts
 import { colors, radius, shadow } from "../theme";
 
-const todayISO = () => new Date().toISOString().slice(0, 10);
+const todayISO = () => localDateISO();
 
 export default function DashboardScreen() {
   const [prediction, setPrediction] = useState<CyclePrediction | null>(null);
@@ -49,8 +49,8 @@ export default function DashboardScreen() {
       </View>
 
       <View style={styles.card}>
-        <Row label="Next period" value={new Date(prediction.nextPeriodStart).toDateString()} />
-        <Row label="Ovulation" value={new Date(prediction.ovulationDate).toDateString()} />
+        <Row label="Next period" value={formatISODate(prediction.nextPeriodStart, { weekday: "short", month: "short", day: "numeric", year: "numeric" })} />
+        <Row label="Ovulation" value={formatISODate(prediction.ovulationDate, { weekday: "short", month: "short", day: "numeric", year: "numeric" })} />
         <Row label="Fertile window" value={`${prediction.fertileWindowStart} → ${prediction.fertileWindowEnd}`} />
       </View>
 

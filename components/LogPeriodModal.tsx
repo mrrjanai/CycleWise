@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { formatISODate, localDateISO } from "@/lib/predictions";
 import { LoggedEntry } from "@/components/DailyInsight";
 
 const SYMPTOMS = ["Cramps", "Headache", "Bloating", "Fatigue", "Tender breasts", "Acne", "Backache"];
@@ -20,7 +21,7 @@ interface LogModalProps {
   onSaved: () => void;
 }
 
-const todayISO = () => new Date().toISOString().slice(0, 10);
+const todayISO = () => localDateISO();
 
 export default function LogPeriodModal({ date, existingEntry, onClose, onSaved }: LogModalProps) {
   const supabase = createClient();
@@ -147,7 +148,7 @@ export default function LogPeriodModal({ date, existingEntry, onClose, onSaved }
   };
 
   const deleteEntry = async () => {
-    if (!confirm(`Delete everything logged for ${new Date(date).toLocaleDateString(undefined, { month: "short", day: "numeric" })}? This can't be undone.`)) return;
+    if (!confirm(`Delete everything logged for ${formatISODate(date, { month: "short", day: "numeric" })}? This can't be undone.`)) return;
     setDeleting(true);
     setError(null);
     try {
@@ -170,7 +171,7 @@ export default function LogPeriodModal({ date, existingEntry, onClose, onSaved }
     <div className="fixed inset-0 bg-ink/30 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-4" role="dialog" aria-modal="true" aria-label={`Log entry for ${date}`}>
       <div className="neo-card w-full max-w-md p-6 space-y-5 max-h-[85vh] overflow-y-auto">
         <div className="flex items-center justify-between">
-          <h2 className="font-display text-xl">Log — {new Date(date).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</h2>
+          <h2 className="font-display text-xl">Log — {formatISODate(date, { month: "short", day: "numeric" })}</h2>
           <button onClick={onClose} aria-label="Close" className="neo-btn w-8 h-8 flex items-center justify-center">✕</button>
         </div>
 
@@ -178,7 +179,7 @@ export default function LogPeriodModal({ date, existingEntry, onClose, onSaved }
           <div className="neo-inset rounded-neo p-6 text-center space-y-2">
             <p className="font-medium text-rose">Can't log a future day</p>
             <p className="text-sm text-ink-muted dark:text-ink-muted-dark">
-              The most recent day you can log is today. Come back on {new Date(date).toLocaleDateString(undefined, { month: "short", day: "numeric" })} once it arrives.
+              The most recent day you can log is today. Come back on {formatISODate(date, { month: "short", day: "numeric" })} once it arrives.
             </p>
           </div>
         ) : saved ? (
@@ -186,7 +187,7 @@ export default function LogPeriodModal({ date, existingEntry, onClose, onSaved }
             <span className="text-3xl">✓</span>
             <p className="font-display text-lg">Saved</p>
             <p className="text-sm text-ink-muted dark:text-ink-muted-dark">
-              Your entry for {new Date(date).toLocaleDateString(undefined, { month: "short", day: "numeric" })} was recorded.
+              Your entry for {formatISODate(date, { month: "short", day: "numeric" })} was recorded.
             </p>
           </div>
         ) : (

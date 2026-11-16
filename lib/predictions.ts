@@ -50,8 +50,25 @@ export interface CyclePrediction {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-const toDate = (iso: string) => new Date(iso + "T00:00:00");
+/** Cycle day (period start = day 1) the model places ovulation on. */
+export const OVULATION_CYCLE_DAY = 14;
+
+// All date math runs in UTC on plain 'YYYY-MM-DD' strings. Mixing local-time
+// parsing with UTC formatting shifts every date by a day in timezones east of
+// UTC (e.g. Nairobi, UTC+3) and around daylight-saving changes.
+const toDate = (iso: string) => new Date(iso + "T00:00:00Z");
 const toISO = (d: Date) => d.toISOString().slice(0, 10);
+const pad = (n: number) => String(n).padStart(2, "0");
+
+/** Format a 'YYYY-MM-DD' string for display without timezone drift. */
+export function formatISODate(iso: string, options: Intl.DateTimeFormatOptions): string {
+  return toDate(iso).toLocaleDateString(undefined, { ...options, timeZone: "UTC" });
+}
+
+/** Today's date in the user's own timezone, as 'YYYY-MM-DD'. */
+export function localDateISO(d: Date = new Date()): string {
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
 const addDays = (iso: string, days: number) => toISO(new Date(toDate(iso).getTime() + days * DAY_MS));
 const diffDays = (a: string, b: string) => Math.round((toDate(b).getTime() - toDate(a).getTime()) / DAY_MS);
 
@@ -69,6 +86,13 @@ function computeCycleStats(cycles: CycleRecord[], fallback: number) {
   return { avg: Math.round(avg), stdDev: Math.round(Math.sqrt(variance) * 10) / 10, sampleSize: lengths.length };
 }
 
+/** Start of the (possibly projected) cycle that contains `date`. */
+function projectedCycleStart(lastPeriodStart: string, date: string, cycleLength: number): string {
+  const elapsed = diffDays(lastPeriodStart, date);
+  if (elapsed < 0) return lastPeriodStart;
+  return addDays(lastPeriodStart, Math.floor(elapsed / cycleLength) * cycleLength);
+}
+
 /**
  * Predict the next period, ovulation date, and fertile window from cycle
  * history. `cycles` should be sorted most-recent-first.
@@ -76,7 +100,7 @@ function computeCycleStats(cycles: CycleRecord[], fallback: number) {
 export function predictCycle(
   cycles: CycleRecord[],
   settings: UserFertilitySettings,
-  today: string = toISO(new Date())
+  today: string = localDateISO()
 ): CyclePrediction {
   const stats = computeCycleStats(cycles, settings.avgCycleLength);
   const lastPeriodStart = cycles[0]?.startDate ?? null;
@@ -85,17 +109,11 @@ export function predictCycle(
   const confidence: CyclePrediction["confidence"] =
     stats.sampleSize >= 4 && stats.stdDev <= 4 ? "high" : stats.sampleSize >= 2 ? "medium" : "low";
 
-  let nextPeriodStart: string;
-  if (lastPeriodStart) {
-    // If the predicted date has already passed, roll forward by the average
-    // length repeatedly (handles the user opening the app mid-cycle or late).
-    nextPeriodStart = addDays(lastPeriodStart, cycleLengthUsed);
-    while (diffDays(today, nextPeriodStart) < 0) {
-      nextPeriodStart = addDays(nextPeriodStart, cycleLengthUsed);
-    }
-  } else {
-    nextPeriodStart = addDays(today, cycleLengthUsed);
-  }
+  // The cycle "today" falls in. If no new period has been logged for a while,
+  // cycles are projected forward from the last logged start by the average
+  // length, so predictions never point at a date that has already passed.
+  const currentCycleStart = lastPeriodStart ? projectedCycleStart(lastPeriodStart, today, cycleLengthUsed) : null;
+  const nextPeriodStart = currentCycleStart ? addDays(currentCycleStart, cycleLengthUsed) : addDays(today, cycleLengthUsed);
 
   const nextPeriodEnd = addDays(nextPeriodStart, settings.avgPeriodLength - 1);
 
@@ -103,11 +121,11 @@ export function predictCycle(
   // start as day 1), with a symmetric ±4 day fertile window around it. This
   // is the simplified "day 14" rule many people are already familiar with,
   // as opposed to a luteal-phase-relative estimate.
-  const ovulationDate = lastPeriodStart ? addDays(lastPeriodStart, 13) : addDays(today, 13);
+  const ovulationDate = addDays(currentCycleStart ?? today, OVULATION_CYCLE_DAY - 1);
   const fertileWindowStart = addDays(ovulationDate, -4);
   const fertileWindowEnd = addDays(ovulationDate, 4);
 
-  const currentCycleDay = lastPeriodStart ? diffDays(lastPeriodStart, today) + 1 : null;
+  const currentCycleDay = currentCycleStart ? diffDays(currentCycleStart, today) + 1 : null;
 
   return {
     lastPeriodStart,
@@ -162,13 +180,18 @@ export function getDayFertility(
   settings: UserFertilitySettings,
   currentCycleStart: string | null
 ): DayFertility {
-  const offsetFromOvulation = diffDays(prediction.ovulationDate, date);
-  const isInPeriod =
-    currentCycleStart != null &&
-    diffDays(currentCycleStart, date) >= 0 &&
-    diffDays(currentCycleStart, date) < settings.avgPeriodLength;
+  // Evaluate each date against the cycle it falls in, so future months show
+  // their own projected period, fertile window and ovulation day — not just
+  // the current cycle's.
+  const cycleStart =
+    currentCycleStart && diffDays(currentCycleStart, date) >= 0
+      ? projectedCycleStart(currentCycleStart, date, prediction.cycleLengthUsed)
+      : null;
+  const ovulationDate = cycleStart ? addDays(cycleStart, OVULATION_CYCLE_DAY - 1) : prediction.ovulationDate;
+  const offsetFromOvulation = diffDays(ovulationDate, date);
+  const isInPeriod = cycleStart != null && diffDays(cycleStart, date) < settings.avgPeriodLength;
 
-  const cycleDay = currentCycleStart ? diffDays(currentCycleStart, date) + 1 : null;
+  const cycleDay = cycleStart ? diffDays(cycleStart, date) + 1 : null;
 
   let zone: FertilityZone;
   let pct: [number, number];
@@ -206,9 +229,9 @@ export function getMonthFertility(
   currentCycleStart: string | null
 ): DayFertility[] {
   const days: DayFertility[] = [];
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
   for (let d = 1; d <= daysInMonth; d++) {
-    const iso = toISO(new Date(year, month, d));
+    const iso = `${year}-${pad(month + 1)}-${pad(d)}`;
     days.push(getDayFertility(iso, prediction, settings, currentCycleStart));
   }
   return days;

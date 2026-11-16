@@ -1,4 +1,4 @@
-name: CI — Type Check & Build
+name: CI — Lint, Type Check, Test & Build
 
 on:
   push:
@@ -16,14 +16,28 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
 
       - name: Install dependencies
         run: npm ci
 
+      - name: Lint
+        run: npm run lint
+
       - name: Type check
-        run: npx tsc --noEmit
+        run: npm run typecheck
+
+      # Run the prediction tests in two timezones: date bugs only show up
+      # away from UTC (e.g. Nairobi is UTC+3).
+      - name: Unit tests (UTC)
+        run: npm test
+        env:
+          TZ: UTC
+      - name: Unit tests (Africa/Nairobi)
+        run: npm test
+        env:
+          TZ: Africa/Nairobi
 
       - name: Build
         run: npm run build
