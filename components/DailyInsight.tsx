@@ -28,7 +28,7 @@ const ZONE_COPY: Record<DayFertility["zone"], { title: string; blurb: string }> 
 };
 
 const TOOLTIPS: Record<string, string> = {
-  ovulation: "Ovulation is when a mature egg is released from the ovary. It's the single most fertile moment of the cycle and typically happens once, about 12–16 days before the next period starts.",
+  ovulation: "Ovulation is when a mature egg is released from the ovary. It's the single most fertile moment of the cycle and typically happens once, roughly around day 14 of a cycle.",
   mucus: "Cervical mucus changes texture across the cycle — from dry/sticky, to creamy, to a stretchy 'egg white' consistency right before ovulation, which helps sperm travel.",
   bbt: "Basal body temperature (BBT) is your resting temperature taken first thing in the morning. It rises slightly (~0.3–0.5°C) after ovulation due to progesterone, which can help confirm ovulation happened after the fact.",
 };
@@ -85,9 +85,9 @@ export default function DailyInsight({ fertility, loggedEntry }: DailyInsightPro
         </div>
       )}
 
-      <div className="neo-inset rounded-neo p-5 space-y-2">
+      <div>
         <p className="text-sm font-medium">{copy.title}</p>
-        <p className="text-sm text-ink-muted dark:text-ink-muted-dark">{copy.blurb}</p>
+        <p className="text-sm text-ink-muted dark:text-ink-muted-dark mt-1">{copy.blurb}</p>
       </div>
 
       <div>

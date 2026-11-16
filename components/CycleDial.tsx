@@ -47,7 +47,6 @@ export default function CycleDial({ prediction, cycleLength }: CycleDialProps) {
             cx={size / 2} cy={size / 2} r={radius}
             fill="none" stroke="currentColor" strokeWidth={stroke}
             className="text-surface dark:text-surface-dark"
-            style={{ filter: "drop-shadow(inset 2px 2px 4px #C7C1DD)" }}
           />
           {/* progress arc */}
           <circle

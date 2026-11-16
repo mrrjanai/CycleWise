@@ -51,7 +51,7 @@ export default function DashboardPage() {
 
   const loadData = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) { router.push("/login"); return; }
 
     const [{ data: profile }, { data: cycles }, { data: logs }] = await Promise.all([
       supabase.from("profiles").select("avg_cycle_length, avg_period_length, luteal_phase_length, onboarding_complete").eq("id", user.id).single(),

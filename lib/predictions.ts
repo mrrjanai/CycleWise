@@ -5,15 +5,14 @@
  * Expo mobile app (copy this file into both, or publish as a workspace
  * package `@cyclewise/core`).
  *
- * METHODOLOGY (evidence-informed, not a diagnostic tool):
- *  - Ovulation is estimated using the "luteal phase is fixed" model:
- *    ovulation_date ≈ next_period_start − luteal_phase_length
- *    (luteal phase is typically 12–14 days and much less variable than the
- *    follicular phase — this is the same logic used by clinical calendar
- *    methods and apps like Clue/Natural Cycles' baseline mode).
- *  - Fertile window = 5 days before ovulation + ovulation day + 1 day after
- *    (sperm survive up to 5 days; the egg survives ~12-24h) — the standard
- *    range cited by ACOG and the CDC's "Effectiveness of FAM" guidance.
+ * METHODOLOGY (simplified calendar model, not a diagnostic tool):
+ *  - Ovulation is estimated at day 14 of the current cycle (counting the
+ *    period start as day 1) — the familiar "day 14" rule. A luteal-phase
+ *    model (ovulation ≈ next period − luteal length) adapts better to
+ *    long/short cycles; `lutealPhaseLength` is kept in settings so the
+ *    model can be switched later without a schema change.
+ *  - Fertile window = ovulation day ± 4 days (symmetric). Sperm survive up
+ *    to ~5 days and the egg ~12–24h, so this brackets the high-risk days.
  *  - Cycle length uses a rolling average of the user's last 6 cycles
  *    (falls back to a 28-day default for new users), with variability
  *    (std dev) used to widen prediction confidence bands.
@@ -32,7 +31,7 @@ export interface CycleRecord {
 
 export interface UserFertilitySettings {
   avgCycleLength: number;      // fallback / manual override, default 28
-  lutealPhaseLength: number;   // default 14
+  lutealPhaseLength: number;   // default 14 (reserved for a luteal-phase model)
   avgPeriodLength: number;     // default 5
 }
 
