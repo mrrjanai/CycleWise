@@ -5,6 +5,13 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
+/**
+ * Social sign-in buttons to show. Empty until the providers are enabled in
+ * Supabase → Authentication → Providers (each needs a client ID/secret from
+ * Google Cloud / Apple Developer). Add "google" and/or "apple" here then.
+ */
+const OAUTH_PROVIDERS: ("google" | "apple")[] = [];
+
 export default function LoginPage() {
   return (
     <Suspense fallback={null}>
@@ -93,14 +100,21 @@ function LoginForm() {
           </button>
         </form>
 
-        <div className="flex items-center gap-3 text-xs text-ink-muted dark:text-ink-muted-dark">
-          <div className="flex-1 h-px bg-ink-muted/20" /> or <div className="flex-1 h-px bg-ink-muted/20" />
-        </div>
+        {OAUTH_PROVIDERS.length > 0 && (
+          <>
+            <div className="flex items-center gap-3 text-xs text-ink-muted dark:text-ink-muted-dark">
+              <div className="flex-1 h-px bg-ink-muted/20" /> or <div className="flex-1 h-px bg-ink-muted/20" />
+            </div>
 
-        <div className="space-y-2">
-          <button onClick={() => handleOAuth("google")} className="neo-btn w-full py-2.5 text-sm font-medium">Continue with Google</button>
-          <button onClick={() => handleOAuth("apple")} className="neo-btn w-full py-2.5 text-sm font-medium">Continue with Apple</button>
-        </div>
+            <div className="space-y-2">
+              {OAUTH_PROVIDERS.map((p) => (
+                <button key={p} onClick={() => handleOAuth(p)} className="neo-btn w-full py-2.5 text-sm font-medium">
+                  Continue with {p === "google" ? "Google" : "Apple"}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
 
         <button onClick={() => setMode(mode === "signin" ? "signup" : "signin")} className="text-sm text-violet w-full text-center">
           {mode === "signin" ? "New here? Create an account" : "Already have an account? Sign in"}
