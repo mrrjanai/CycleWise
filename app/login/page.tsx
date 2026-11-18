@@ -32,7 +32,7 @@ function LoginForm() {
   const [error, setError] = useState<string | null>(searchParams.get("error"));
   const [loading, setLoading] = useState(false);
 
-  // Full page loads (location.href) on purpose after auth: they guarantee the
+  // Full page loads (location.assign) on purpose after auth: they guarantee the
   // new session cookie is sent with the next request, so proxy.ts sees it.
   /* eslint-disable @next/next/no-location-assign-relative-destination */
   const handleSubmit = async (e: React.FormEvent) => {
@@ -43,7 +43,7 @@ function LoginForm() {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       setLoading(false);
       if (error) setError(error.message);
-      else location.href = "/dashboard";
+      else window.location.assign("/dashboard");
     } else {
       const { data, error } = await supabase.auth.signUp({
         email, password,
@@ -53,8 +53,8 @@ function LoginForm() {
       if (error) setError(error.message);
       // If email confirmation is off, Supabase returns a session immediately —
       // send the user straight into onboarding instead of the verify-email page.
-      else if (data.session) location.href = "/onboarding";
-      else location.href = `/verify-email?email=${encodeURIComponent(email)}`;
+      else if (data.session) window.location.assign("/onboarding");
+      else window.location.assign(`/verify-email?email=${encodeURIComponent(email)}`);
     }
   };
 
