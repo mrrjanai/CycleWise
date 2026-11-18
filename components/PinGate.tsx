@@ -67,7 +67,7 @@ export default function PinGate({ children }: { children: ReactNode }) {
         <button
           onClick={submit}
           disabled={entry.length !== 4}
-          className="neo-btn w-full py-3 font-medium bg-gradient-to-br from-rose to-violet text-white disabled:opacity-50"
+          className="neo-btn w-full py-3 font-medium sk-primary disabled:opacity-50"
         >
           Unlock
         </button>

@@ -48,7 +48,7 @@ export default function ForgotPasswordPage() {
               />
             </div>
             {error && <p className="text-sm text-rose" role="alert">{error}</p>}
-            <button type="submit" disabled={loading} className="neo-btn w-full py-3 font-medium bg-gradient-to-br from-rose to-violet text-white disabled:opacity-60">
+            <button type="submit" disabled={loading} className="neo-btn w-full py-3 font-medium sk-primary disabled:opacity-60">
               {loading ? "Sending…" : "Send reset link"}
             </button>
           </form>

@@ -127,7 +127,7 @@ export default function SettingsPage() {
             </div>
           )}
           {!pinEnabled && pinStep === "idle" && (
-            <button onClick={startSetPin} className="neo-btn px-4 py-2 text-sm font-medium bg-gradient-to-br from-rose to-violet text-white">
+            <button onClick={startSetPin} className="neo-btn px-4 py-2 text-sm font-medium sk-primary">
               Set up a PIN
             </button>
           )}
@@ -158,7 +158,7 @@ export default function SettingsPage() {
               />
               {pinError && <p className="text-sm text-rose">{pinError}</p>}
               <div className="flex gap-2">
-                <button onClick={savePin} disabled={pinSaving || pinConfirmDraft.length !== 4} className="neo-btn px-4 py-2 text-sm font-medium bg-gradient-to-br from-rose to-violet text-white disabled:opacity-50">
+                <button onClick={savePin} disabled={pinSaving || pinConfirmDraft.length !== 4} className="neo-btn px-4 py-2 text-sm font-medium sk-primary disabled:opacity-50">
                   {pinSaving ? "Saving…" : "Save PIN"}
                 </button>
                 <button onClick={() => setPinStep("idle")} className="neo-btn px-4 py-2 text-sm">Cancel</button>

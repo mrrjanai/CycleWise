@@ -238,7 +238,7 @@ export default function OnboardingPage() {
         <button
           onClick={submit}
           disabled={!canSubmit || saving}
-          className="neo-btn w-full py-3 font-medium bg-gradient-to-br from-rose to-violet text-white disabled:opacity-50"
+          className="neo-btn w-full py-3 font-medium sk-primary disabled:opacity-50"
         >
           {saving ? "Setting up…" : "Continue to my dashboard"}
         </button>

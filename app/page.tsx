@@ -33,7 +33,7 @@ export default function LandingPage() {
           your body has been showing you all along.
         </p>
         <div className="flex items-center justify-center gap-4">
-          <Link href="/login" className="neo-btn px-7 py-3.5 font-medium bg-gradient-to-br from-rose to-violet text-white">
+          <Link href="/login" className="neo-btn px-7 py-3.5 font-medium sk-primary">
             Start tracking — it's free
           </Link>
         </div>
@@ -79,7 +79,7 @@ export default function LandingPage() {
       <section className="max-w-3xl mx-auto px-4 sm:px-8 pb-20 text-center">
         <h2 className="font-display text-3xl mb-4">Your cycle, your data, your call.</h2>
         <p className="text-ink-muted dark:text-ink-muted-dark mb-8">Free to start. No ads. No data sold, ever.</p>
-        <Link href="/login" className="neo-btn px-7 py-3.5 font-medium bg-gradient-to-br from-rose to-violet text-white">
+        <Link href="/login" className="neo-btn px-7 py-3.5 font-medium sk-primary">
           Create your account
         </Link>
       </section>

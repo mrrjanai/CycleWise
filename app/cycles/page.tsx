@@ -100,11 +100,11 @@ export default function CyclesPage() {
             <div style={{ width: "100%", height: 220 }}>
               <ResponsiveContainer>
                 <LineChart data={chartData}>
-                  <CartesianGrid stroke="#C7C1DD" strokeDasharray="3 3" opacity={0.3} />
-                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#8A82A3" }} />
-                  <YAxis tick={{ fontSize: 11, fill: "#8A82A3" }} domain={["dataMin - 2", "dataMax + 2"]} />
+                  <CartesianGrid stroke="#8C93A6" strokeDasharray="3 3" opacity={0.3} />
+                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#8C93A6" }} />
+                  <YAxis tick={{ fontSize: 11, fill: "#8C93A6" }} domain={["dataMin - 2", "dataMax + 2"]} />
                   <Tooltip />
-                  <Line type="monotone" dataKey="length" stroke="#8B6BC7" strokeWidth={3} dot={{ fill: "#8B6BC7", r: 4 }} />
+                  <Line type="monotone" dataKey="length" stroke="#FF6B5B" strokeWidth={3} dot={{ fill: "#FF6B5B", r: 4 }} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -193,7 +193,7 @@ export default function CyclesPage() {
           </div>
 
           {settingsError && <p className="text-sm text-rose">{settingsError}</p>}
-          <button onClick={saveSettings} disabled={savingSettings} className="neo-btn px-5 py-2.5 text-sm font-medium bg-gradient-to-br from-rose to-violet text-white disabled:opacity-60">
+          <button onClick={saveSettings} disabled={savingSettings} className="neo-btn px-5 py-2.5 text-sm font-medium sk-primary disabled:opacity-60">
             {savingSettings ? "Saving…" : settingsSaved ? "Saved ✓" : "Save settings"}
           </button>
         </div>

@@ -1,15 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const supabase = createClient();
+  const searchParams = useSearchParams();
+  // Set by /auth/callback when an email link was confirmed but couldn't sign
+  // the user in (e.g. opened in another browser), or when it failed.
+  const confirmed = searchParams.get("confirmed") === "1";
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(searchParams.get("error"));
   const [loading, setLoading] = useState(false);
 
   // Full page loads (location.href) on purpose after auth: they guarantee the
@@ -27,7 +40,7 @@ export default function LoginPage() {
     } else {
       const { data, error } = await supabase.auth.signUp({
         email, password,
-        options: { emailRedirectTo: `${location.origin}/dashboard` },
+        options: { emailRedirectTo: `${location.origin}/auth/callback?next=/onboarding` },
       });
       setLoading(false);
       if (error) setError(error.message);
@@ -41,7 +54,8 @@ export default function LoginPage() {
   /* eslint-enable @next/next/no-location-assign-relative-destination */
 
   const handleOAuth = async (provider: "google" | "apple") => {
-    await supabase.auth.signInWithOAuth({ provider, options: { redirectTo: `${location.origin}/dashboard` } });
+    const { error } = await supabase.auth.signInWithOAuth({ provider, options: { redirectTo: `${location.origin}/auth/callback?next=/dashboard` } });
+    if (error) setError(error.message);
   };
 
   return (
@@ -51,6 +65,12 @@ export default function LoginPage() {
           <h1 className="font-display text-3xl">CycleWise</h1>
           <p className="text-sm text-ink-muted dark:text-ink-muted-dark">Your cycle, your data, your call.</p>
         </div>
+
+        {confirmed && (
+          <p className="neo-inset rounded-neo p-3 text-sm text-center" role="status">
+            Your email is confirmed. Sign in to continue.
+          </p>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -68,7 +88,7 @@ export default function LoginPage() {
               className="neo-inset-sm rounded-neo w-full p-3 bg-transparent outline-none border border-ink-muted/30 focus:border-violet" />
           </div>
           {error && <p className="text-sm text-rose" role="alert">{error}</p>}
-          <button type="submit" disabled={loading} className="neo-btn w-full py-3 font-medium bg-gradient-to-br from-rose to-violet text-white disabled:opacity-60">
+          <button type="submit" disabled={loading} className="neo-btn w-full py-3 font-medium sk-primary disabled:opacity-60">
             {loading ? "Please wait…" : mode === "signin" ? "Sign in" : "Create account"}
           </button>
         </form>

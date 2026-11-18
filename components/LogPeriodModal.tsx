@@ -392,7 +392,7 @@ export default function LogPeriodModal({ date, existingEntry, onClose, onSaved }
 
             {error && <p className="text-sm text-rose">{error}</p>}
 
-            <button onClick={save} disabled={saving || deleting} className="neo-btn w-full py-3 font-medium bg-gradient-to-br from-rose to-violet text-white disabled:opacity-60">
+            <button onClick={save} disabled={saving || deleting} className="neo-btn w-full py-3 font-medium sk-primary disabled:opacity-60">
               {saving ? "Saving…" : "Save entry"}
             </button>
 

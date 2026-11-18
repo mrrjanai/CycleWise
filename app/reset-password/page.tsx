@@ -67,7 +67,7 @@ export default function ResetPasswordPage() {
               className="neo-inset-sm rounded-neo w-full p-3 bg-transparent outline-none border border-ink-muted/30 focus:border-violet"
             />
             {error && <p className="text-sm text-rose">{error}</p>}
-            <button type="submit" disabled={saving} className="neo-btn w-full py-3 font-medium bg-gradient-to-br from-rose to-violet text-white disabled:opacity-60">
+            <button type="submit" disabled={saving} className="neo-btn w-full py-3 font-medium sk-primary disabled:opacity-60">
               {saving ? "Saving…" : "Set new password"}
             </button>
           </form>

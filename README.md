@@ -72,25 +72,31 @@ cyclewise/
   docs/                     # setup guide, testing & privacy plan
 ```
 
-## Design direction — Neomorphism
+## Design direction — Skeuomorphism
 
-The palette is a single soft-lilac hue family (`#E9E4F5` base) so raised/pressed
-neomorphic surfaces read correctly — neomorphism only works on a near-monochrome
-base. Rose→violet gradients mark primary actions. The calendar uses four
-colors so it is scannable without reading labels: **orange** = period,
-**purple** = fertile window, **red** = ovulation, **green** = lower fertility.
+Surfaces read as real materials: grained cream **paper** cards, recessed
+**wells** for inputs and panels, raised **buttons** that press down, a
+stitched **navy leather** sidebar and a glass-faced **instrument dial**.
+
+The palette is three colors: **navy `#14213D`** (ink, leather, ovulation),
+**cream `#F4EDE0`** (paper) and **coral `#FF6B5B`** (primary actions,
+period, progress). Colors are CSS variables in `app/globals.css`, redefined
+for dark mode, where the page becomes navy and cards a lighter navy. Primary
+buttons are glossy coral with navy text (5:1 contrast; white on coral fails
+WCAG). The calendar stays scannable without labels: **coral** = period,
+**soft navy** = fertile window, **solid navy tile** = ovulation,
+**sage** = lower fertility.
 
 Typography pairs **Fraunces** (a soft, warm display serif for headings and the
 big "day of cycle" number) with **Inter** for body text and **IBM Plex Mono**
 for data/stats, so numbers feel precise against the otherwise soft, rounded UI.
 
 The signature element is the **Cycle Dial** (`components/CycleDial.tsx`): a
-circular progress ring carved into the surface with a raised gradient arc,
-styled like a soft-touch instrument dial rather than a chart — echoing a
-compact mirror or thermostat rather than generic app-dashboard iconography.
+navy bezel around a cream face with a tick for every cycle day, the period
+and fertile window printed on it, a coral progress arc with a raised knob
+for today, and a glass glare — a physical instrument, not a chart.
 
-Accessibility: neomorphism's low inherent contrast is offset with an explicit
-3px high-contrast focus ring on every interactive element (`:focus-visible` in
+Accessibility: an explicit 3px coral focus ring on every interactive element (`:focus-visible` in
 `globals.css`), `aria-pressed`/`aria-label` on all calendar day buttons, and
 `prefers-reduced-motion` support.
 

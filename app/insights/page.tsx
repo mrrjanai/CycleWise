@@ -169,17 +169,17 @@ export default function InsightsPage() {
                 <div style={{ width: "100%", height: 240 }}>
                   <ResponsiveContainer>
                     <LineChart data={bbtData} margin={{ top: 8, right: 12, bottom: 4, left: -8 }}>
-                      <CartesianGrid stroke="#C7C1DD" strokeDasharray="3 3" opacity={0.3} />
-                      <XAxis dataKey="day" type="number" domain={["dataMin", "dataMax"]} tick={{ fontSize: 11, fill: "#8A82A3" }} label={{ value: "Cycle day", position: "insideBottom", offset: -2, fontSize: 11, fill: "#8A82A3" }} height={36} />
-                      <YAxis tick={{ fontSize: 11, fill: "#8A82A3" }} domain={["dataMin - 0.1", "dataMax + 0.1"]} tickFormatter={(v: number) => v.toFixed(1)} width={48} />
+                      <CartesianGrid stroke="#8C93A6" strokeDasharray="3 3" opacity={0.3} />
+                      <XAxis dataKey="day" type="number" domain={["dataMin", "dataMax"]} tick={{ fontSize: 11, fill: "#8C93A6" }} label={{ value: "Cycle day", position: "insideBottom", offset: -2, fontSize: 11, fill: "#8C93A6" }} height={36} />
+                      <YAxis tick={{ fontSize: 11, fill: "#8C93A6" }} domain={["dataMin - 0.1", "dataMax + 0.1"]} tickFormatter={(v: number) => v.toFixed(1)} width={48} />
                       <Tooltip formatter={(v) => [`${Number(v).toFixed(2)} °C`, "BBT"]} labelFormatter={(d) => `Cycle day ${d}`} />
                       {cycle?.ovulation?.coverline != null && (
-                        <ReferenceLine y={cycle.ovulation.coverline} stroke="#F0A860" strokeDasharray="5 4" label={{ value: "coverline", position: "insideTopLeft", fontSize: 11, fill: "#F0A860" }} />
+                        <ReferenceLine y={cycle.ovulation.coverline} stroke="#8C93A6" strokeDasharray="5 4" label={{ value: "coverline", position: "insideTopLeft", fontSize: 11, fill: "#8C93A6" }} />
                       )}
                       {ovulationDay != null && (
-                        <ReferenceLine x={ovulationDay} stroke="#E0524F" label={{ value: "ovulation", position: "top", fontSize: 11, fill: "#E0524F" }} />
+                        <ReferenceLine x={ovulationDay} stroke="#5B7DB1" label={{ value: "ovulation", position: "top", fontSize: 11, fill: "#5B7DB1" }} />
                       )}
-                      <Line type="monotone" dataKey="temp" stroke="#8B6BC7" strokeWidth={2.5} dot={{ fill: "#8B6BC7", r: 3 }} />
+                      <Line type="monotone" dataKey="temp" stroke="#FF6B5B" strokeWidth={2.5} dot={{ fill: "#FF6B5B", r: 3 }} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>

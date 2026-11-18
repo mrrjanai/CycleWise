@@ -16,7 +16,7 @@ export default function Navbar() {
       </nav>
       <div className="flex items-center gap-3">
         <Link href="/login" className="text-sm font-medium text-ink dark:text-ink-dark">Sign in</Link>
-        <Link href="/login" className="neo-btn px-4 py-2 text-sm font-medium bg-gradient-to-br from-rose to-violet text-white">Get started</Link>
+        <Link href="/login" className="neo-btn px-4 py-2 text-sm font-medium sk-primary">Get started</Link>
       </div>
     </header>
   );

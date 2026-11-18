@@ -64,7 +64,7 @@ export default function TodayCard({ prediction, settings, goal, headsUp, today }
 
       {prediction.ovulationSource !== "calendar" && (
         <p className="text-sm flex gap-2 items-start">
-          <span aria-hidden className="text-peak">●</span>
+          <span aria-hidden className="text-rose">●</span>
           <span>{OVULATION_SIGNAL[prediction.ovulationSource](short(prediction.ovulationDate))}</span>
         </p>
       )}

@@ -2,25 +2,84 @@
 @tailwind components;
 @tailwind utilities;
 
+/* -------------------------------------------------------------------------
+   Skeuomorphic theme — navy #14213D, cream #F4EDE0, coral #FF6B5B
+   Surfaces read as real materials: textured paper cards, recessed wells,
+   raised buttons that press down, a stitched navy leather sidebar and a
+   glass-faced instrument dial. Colors are RGB triplets so Tailwind can
+   apply opacity (e.g. border-ink-muted/30).
+   ------------------------------------------------------------------------- */
 @layer base {
+  :root {
+    --base: 244 237 224;        /* cream paper */
+    --surface: 251 247 239;     /* card paper, a shade lighter */
+    --surface-2: 240 232 216;   /* card paper, lower edge */
+    --well: 234 225 207;        /* recessed wells and inputs */
+    --ink: 20 33 61;            /* navy */
+    --ink-muted: 92 99 118;
+    --rose: 255 107 91;         /* coral */
+    --rose-soft: 255 220 214;
+    --violet: 20 33 61;         /* navy accent: links, selection */
+    --violet-soft: 214 222 238; /* fertile window */
+    --sage: 63 105 66;
+    --sage-soft: 222 231 211;
+    --amber: 190 60 46;         /* period text: deep coral for contrast */
+    --amber-soft: 255 222 214;
+    --peak: 244 237 224;        /* ovulation: cream text … */
+    --peak-soft: 20 33 61;      /* … on a navy tile */
+    --leather: 20 33 61;
+    --sh: 20 33 61;             /* shadow color */
+    --hi: 255 255 255;          /* highlight color */
+    --hi-a: 0.75;
+    --focus: 255 107 91;
+    color-scheme: light;
+  }
+
+  .dark {
+    --base: 20 33 61;
+    --surface: 30 47 82;
+    --surface-2: 24 39 70;
+    --well: 15 25 47;
+    --ink: 244 237 224;
+    --ink-muted: 178 186 204;
+    --rose: 255 107 91;
+    --rose-soft: 92 42 46;
+    --violet: 201 214 242;
+    --violet-soft: 45 66 112;
+    --sage: 168 204 160;
+    --sage-soft: 38 62 52;
+    --amber: 255 154 142;
+    --amber-soft: 88 40 46;
+    --peak: 20 33 61;
+    --peak-soft: 244 237 224;
+    --leather: 12 21 40;
+    --sh: 0 0 0;
+    --hi: 255 255 255;
+    --hi-a: 0.07;
+    color-scheme: dark;
+  }
+
   html {
     @apply scroll-smooth;
   }
 
   body {
-    @apply bg-base dark:bg-base-dark text-ink dark:text-ink-dark font-body antialiased;
-    /* subtle grain-free gradient so large flat neomorphic areas don't look sterile */
-    background-image: radial-gradient(circle at 15% 0%, rgba(255,255,255,0.5), transparent 40%);
+    @apply text-ink font-body antialiased;
+    background-color: rgb(var(--base));
+    /* Paper grain + a soft vignette so large areas feel like a material */
+    background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.08 0 0 0 0 0.13 0 0 0 0 0.24 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+      radial-gradient(ellipse at 50% -10%, rgb(var(--hi) / calc(var(--hi-a) * .6)), transparent 60%);
+    background-attachment: fixed;
   }
 
   h1, h2, h3, h4 {
-    @apply font-display text-ink dark:text-ink-dark;
+    @apply font-display text-ink;
   }
 
-  /* Visible focus ring everywhere — neomorphism has low inherent contrast,
-     so keyboard focus needs an explicit, high-contrast indicator (WCAG 2.4.7). */
+  /* Visible focus ring everywhere (WCAG 2.4.7). */
   :focus-visible {
-    outline: 3px solid #8B6BC7;
+    outline: 3px solid rgb(var(--focus));
     outline-offset: 3px;
     border-radius: 0.5rem;
   }
@@ -33,28 +92,119 @@
       scroll-behavior: auto !important;
     }
   }
+
+  @media print {
+    body { background: #fff; }
+  }
 }
 
 @layer components {
-  /* Base neomorphic "soft card" surface used throughout the app */
+  /* Paper card: lighter top edge, subtle border, lifted off the page */
   .neo-card {
-    @apply bg-surface dark:bg-surface-dark rounded-neo shadow-neo dark:shadow-neo-dark transition-shadow;
+    @apply rounded-neo shadow-neo transition-shadow;
+    background-image: linear-gradient(180deg, rgb(var(--surface)), rgb(var(--surface-2)));
+    border: 1px solid rgb(var(--sh) / .12);
   }
 
-  /* A tappable neomorphic control: raised at rest, presses inward on click */
+  /* Raised button that physically presses down when clicked */
   .neo-btn {
-    @apply bg-surface dark:bg-surface-dark rounded-neo-lg shadow-neo dark:shadow-neo-dark
-           active:shadow-neo-inset dark:active:shadow-neo-inset-dark
-           active:animate-press transition-shadow duration-150 select-none;
+    @apply rounded-neo-lg shadow-neo-sm select-none transition duration-150 text-ink;
+    background-image: linear-gradient(180deg, rgb(var(--surface)), rgb(var(--surface-2)));
+    border: 1px solid rgb(var(--sh) / .2);
+  }
+  .neo-btn:hover:not(:disabled) {
+    filter: brightness(1.03);
+  }
+  .neo-btn:active:not(:disabled) {
+    @apply shadow-neo-inset-sm animate-press;
+    background-image: linear-gradient(180deg, rgb(var(--surface-2)), rgb(var(--surface)));
   }
 
-  /* A logged/selected state — permanently pressed-in, communicates "recorded" */
+  /* Selected / recorded state: pushed into the surface */
   .neo-pressed {
-    @apply bg-surface dark:bg-surface-dark rounded-neo shadow-neo-inset dark:shadow-neo-inset-dark;
+    @apply rounded-neo shadow-neo-inset-sm;
+    background-image: none;
+    background-color: rgb(var(--well));
+    border: 1px solid rgb(var(--sh) / .25);
   }
 
-  /* Ensure text on colored fertility-zone chips always meets 4.5:1 contrast */
+  /* Recessed wells (panels, inputs) */
+  .neo-inset {
+    @apply shadow-neo-inset;
+    background-color: rgb(var(--well));
+    border: 1px solid rgb(var(--sh) / .1);
+  }
+  .neo-inset-sm {
+    @apply shadow-neo-inset-sm;
+    background-color: rgb(var(--well)) !important;
+  }
+
+  /* Primary action: glossy coral button. Navy text keeps 5:1 contrast. */
+  .sk-primary {
+    color: #14213D !important;
+    font-weight: 600;
+    background-image: linear-gradient(180deg, #FF9284 0%, #FF6B5B 52%, #F0503F 100%) !important;
+    border: 1px solid #C9402F !important;
+    text-shadow: 0 1px 0 rgb(255 255 255 / .35);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / .55), inset 0 -1px 0 rgb(0 0 0 / .08), 0 1px 1px rgb(20 33 61 / .2), 0 4px 10px -2px rgb(201 64 47 / .45);
+  }
+  .sk-primary:active:not(:disabled) {
+    background-image: linear-gradient(180deg, #F0503F 0%, #FF6B5B 100%) !important;
+    box-shadow: inset 0 2px 4px rgb(120 30 20 / .35);
+  }
+
+  /* Navy leather with a stitched inner edge (sidebar) */
+  .sk-leather {
+    position: relative;
+    color: #F4EDE0;
+    background-color: rgb(var(--leather));
+    background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.4' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+      linear-gradient(90deg, rgb(255 255 255 / .03), transparent 40%, rgb(0 0 0 / .18));
+    box-shadow: inset -1px 0 0 rgb(255 255 255 / .06), 6px 0 18px -8px rgb(0 0 0 / .45);
+  }
+  .sk-leather::before {
+    content: "";
+    position: absolute;
+    inset: 8px;
+    border: 1.5px dashed rgb(244 237 224 / .28);
+    border-radius: 10px;
+    pointer-events: none;
+  }
+
+  /* Sidebar nav tabs on the leather */
+  .sk-tab {
+    color: rgb(244 237 224 / .82);
+    border: 1px solid transparent;
+  }
+  .sk-tab:hover {
+    color: #F4EDE0;
+    background-color: rgb(255 255 255 / .06);
+  }
+  .sk-tab-active {
+    color: #14213D;
+    background-image: linear-gradient(180deg, #FBF7EF, #EDE3D1);
+    border: 1px solid rgb(0 0 0 / .25);
+    box-shadow: inset 0 1px 0 #fff, 0 2px 4px rgb(0 0 0 / .35);
+  }
+
+  /* Fertility-zone chips — text always meets 4.5:1 on its soft background */
   .zone-chip {
     @apply text-sm font-medium px-2.5 py-1 rounded-full inline-flex items-center gap-1.5;
+  }
+}
+
+@layer components {
+  /* Calendar day: a small glossy tile; the zone color shows through the gloss */
+  .sk-tile {
+    @apply shadow-neo-sm transition;
+    background-image: linear-gradient(180deg, rgb(255 255 255 / .38), rgb(255 255 255 / 0) 55%, rgb(0 0 0 / .04));
+  }
+  .sk-tile:active,
+  .sk-tile-selected {
+    @apply shadow-neo-inset-sm;
+    background-image: none;
+    outline: 2px solid rgb(var(--rose));
+    outline-offset: 2px;
   }
 }

@@ -73,7 +73,7 @@ export default function DashboardPage() {
             <div className="ml-auto flex flex-col items-end gap-1">
               <button
                 onClick={handleLogClick}
-                className="neo-btn px-5 py-2.5 font-medium bg-gradient-to-br from-rose to-violet text-white"
+                className="neo-btn px-5 py-2.5 font-medium sk-primary"
               >
                 {logButtonLabel}
               </button>

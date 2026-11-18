@@ -156,7 +156,7 @@ export default function ProfilePage() {
           />
           {pwError && <p className="text-sm text-rose">{pwError}</p>}
           {pwMessage && <p className="text-sm text-sage">{pwMessage}</p>}
-          <button onClick={changePassword} disabled={pwSaving} className="neo-btn px-5 py-2.5 text-sm font-medium bg-gradient-to-br from-rose to-violet text-white disabled:opacity-60">
+          <button onClick={changePassword} disabled={pwSaving} className="neo-btn px-5 py-2.5 text-sm font-medium sk-primary disabled:opacity-60">
             {pwSaving ? "Saving…" : "Update password"}
           </button>
         </div>
@@ -190,7 +190,7 @@ export default function ProfilePage() {
           <button
             onClick={deleteAccount}
             disabled={deleteConfirmText !== "DELETE" || deleting}
-            className="neo-btn px-5 py-2.5 text-sm font-medium bg-rose text-white disabled:opacity-40"
+            className="neo-btn px-5 py-2.5 text-sm font-medium sk-primary disabled:opacity-40"
           >
             {deleting ? "Deleting…" : "Permanently delete my data"}
           </button>

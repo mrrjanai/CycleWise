@@ -12,9 +12,9 @@ interface CalendarProps {
 }
 
 const ZONE_STYLES: Record<DayFertility["zone"], string> = {
-  period: "bg-amber-soft text-amber border border-amber/40",       // orange
-  fertile: "bg-violet-soft text-violet border border-violet/40",    // purple
-  ovulation: "bg-peak-soft text-peak border border-peak/50 font-semibold", // red
+  period: "bg-amber-soft text-amber border border-amber/40",       // coral
+  fertile: "bg-violet-soft text-violet border border-violet/40",    // soft navy
+  ovulation: "bg-peak-soft text-peak border border-peak/50 font-semibold", // solid navy tile
   low: "bg-sage-soft text-sage border border-sage/40",               // green
   luteal: "bg-sage-soft text-sage border border-sage/40",            // same as low (4-color scheme)
 };
@@ -62,7 +62,7 @@ export default function Calendar({ prediction, settings, loggedDates, selectedDa
               aria-pressed={isSelected}
               className={[
                 "aspect-square rounded-xl text-sm font-medium flex flex-col items-center justify-center gap-0.5 transition-shadow",
-                isSelected ? "neo-pressed ring-2 ring-violet" : "neo-btn",
+                isSelected ? "sk-tile sk-tile-selected" : "sk-tile",
                 ZONE_STYLES[day.zone],
               ].join(" ")}
             >
@@ -74,10 +74,10 @@ export default function Calendar({ prediction, settings, loggedDates, selectedDa
       </div>
 
       <div className="flex flex-wrap gap-3 mt-5 text-xs">
-        <Legend swatch="bg-amber" label="Period" />
-        <Legend swatch="bg-violet" label="Fertile window" />
-        <Legend swatch="bg-peak" label="Ovulation day" />
-        <Legend swatch="bg-sage" label="Low fertility" />
+        <Legend swatch="bg-amber-soft border border-amber/60" label="Period" />
+        <Legend swatch="bg-violet-soft border border-violet/50" label="Fertile window" />
+        <Legend swatch="bg-peak-soft border border-peak/40" label="Ovulation day" />
+        <Legend swatch="bg-sage-soft border border-sage/60" label="Low fertility" />
       </div>
     </div>
   );
@@ -86,7 +86,7 @@ export default function Calendar({ prediction, settings, loggedDates, selectedDa
 function Legend({ swatch, label }: { swatch: string; label: string }) {
   return (
     <span className="flex items-center gap-1.5 text-ink-muted dark:text-ink-muted-dark">
-      <span className={`w-2.5 h-2.5 rounded-full ${swatch}`} /> {label}
+      <span className={`w-3 h-3 rounded-full ${swatch}`} /> {label}
     </span>
   );
 }

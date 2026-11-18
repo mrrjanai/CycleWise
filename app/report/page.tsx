@@ -60,7 +60,7 @@ export default function ReportPage() {
         <main className="flex-1 p-4 sm:p-8 max-w-4xl mx-auto w-full space-y-6 print:p-0 print:max-w-none print:text-black">
           <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
             <h1 className="font-display text-3xl">Doctor report</h1>
-            <button onClick={() => window.print()} className="neo-btn px-5 py-2.5 text-sm font-medium bg-gradient-to-br from-rose to-violet text-white">
+            <button onClick={() => window.print()} className="neo-btn px-5 py-2.5 text-sm font-medium sk-primary">
               Print / save as PDF
             </button>
           </div>
