@@ -1,108 +1,36 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-import { predictCycle, getDayFertility, formatISODate, localDateISO, CycleRecord, CyclePrediction, UserFertilitySettings } from "@/lib/predictions";
+import { useMemo, useState } from "react";
+import { getDayFertility, formatISODate } from "@/lib/predictions";
+import { symptomPatterns, upcomingPatterns } from "@/lib/insights";
+import { useCycleData } from "@/lib/useCycleData";
 import CycleDial from "@/components/CycleDial";
 import Calendar from "@/components/Calendar";
-import DailyInsight, { LoggedEntry } from "@/components/DailyInsight";
+import DailyInsight from "@/components/DailyInsight";
 import LogPeriodModal from "@/components/LogPeriodModal";
 import Sidebar from "@/components/Sidebar";
 import PinGate from "@/components/PinGate";
-
-const todayISO = () => localDateISO();
-
-// Full row shape returned from daily_logs (jsonb columns arrive as strings
-// unless the client parses them, so we normalize on read).
-interface DailyLogRow {
-  log_date: string;
-  flow_intensity: string | null;
-  symptoms: string | string[] | null;
-  mood: string | string[] | null;
-  sexual_activity: string | { occurred?: boolean; protection?: string | null } | null;
-  basal_body_temp: number | null;
-  medications: string | { name: string; dose: string }[] | null;
-  tests: string | { type: string; result: string }[] | null;
-  notes: string | null;
-}
-
-function parseJsonField<T>(value: unknown, fallback: T): T {
-  if (value == null) return fallback;
-  if (typeof value !== "string") return value as T;
-  try {
-    return JSON.parse(value) as T;
-  } catch {
-    return fallback;
-  }
-}
+import TodayCard from "@/components/TodayCard";
 
 export default function DashboardPage() {
-  const supabase = createClient();
-  const router = useRouter();
-  const [prediction, setPrediction] = useState<CyclePrediction | null>(null);
-  const [settings, setSettings] = useState<UserFertilitySettings>({ avgCycleLength: 28, lutealPhaseLength: 14, avgPeriodLength: 5 });
-  const [selectedDate, setSelectedDate] = useState(todayISO());
-  const [loggedDates, setLoggedDates] = useState<Record<string, { hasPeriod?: boolean; hasLog?: boolean }>>({});
-  const [logsByDate, setLogsByDate] = useState<Record<string, LoggedEntry>>({});
+  const { loading, model, prediction, logs, entries, goal, today, reload } = useCycleData({ requireOnboarded: true });
+  const settings = model.settings;
+  const [selectedDate, setSelectedDate] = useState(today);
   const [showModal, setShowModal] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [futureDateMessage, setFutureDateMessage] = useState<string | null>(null);
 
-  const loadData = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { router.push("/login"); return; }
-
-    const [{ data: profile }, { data: cycles }, { data: logs }] = await Promise.all([
-      supabase.from("profiles").select("avg_cycle_length, avg_period_length, luteal_phase_length, onboarding_complete").eq("id", user.id).single(),
-      supabase.from("cycles").select("start_date, cycle_length, period_length").eq("user_id", user.id).order("start_date", { ascending: false }),
-      supabase
-        .from("daily_logs")
-        .select("log_date, flow_intensity, symptoms, mood, sexual_activity, basal_body_temp, medications, tests, notes")
-        .eq("user_id", user.id)
-        .returns<DailyLogRow[]>(),
-    ]);
-
-    if (profile && profile.onboarding_complete === false) {
-      router.push("/onboarding");
-      return;
-    }
-
-    const s: UserFertilitySettings = {
-      avgCycleLength: profile?.avg_cycle_length ?? 28,
-      lutealPhaseLength: profile?.luteal_phase_length ?? 14,
-      avgPeriodLength: profile?.avg_period_length ?? 5,
-    };
-    setSettings(s);
-
-    const records: CycleRecord[] = (cycles ?? []).map((c) => ({ startDate: c.start_date, cycleLength: c.cycle_length, periodLength: c.period_length }));
-    setPrediction(predictCycle(records, s));
-
+  const loggedDates = useMemo(() => {
     const map: Record<string, { hasPeriod?: boolean; hasLog?: boolean }> = {};
-    const entryMap: Record<string, LoggedEntry> = {};
-    (logs ?? []).forEach((l) => {
-      map[l.log_date] = { hasLog: true, hasPeriod: !!(l.flow_intensity && l.flow_intensity !== "none") };
-      entryMap[l.log_date] = {
-        flow_intensity: l.flow_intensity,
-        symptoms: parseJsonField<string[]>(l.symptoms, []),
-        mood: parseJsonField<string[]>(l.mood, []),
-        sexual_activity: parseJsonField<{ occurred?: boolean; protection?: string | null }>(l.sexual_activity, { occurred: false }),
-        basal_body_temp: l.basal_body_temp,
-        medications: parseJsonField<{ name: string; dose: string }[]>(l.medications, []),
-        tests: parseJsonField<{ type: string; result: string }[]>(l.tests, []),
-        notes: l.notes,
-      };
-    });
-    setLoggedDates(map);
-    setLogsByDate(entryMap);
-    setLoading(false);
-  }, [supabase, router]);
+    for (const l of logs) map[l.date] = { hasLog: true, hasPeriod: !!(l.flow && l.flow !== "none") };
+    return map;
+  }, [logs]);
 
-  // Data fetch on mount: state is only set after the awaited queries resolve.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { loadData(); }, [loadData]);
+  const headsUp = useMemo(
+    () => upcomingPatterns(symptomPatterns(model.history, logs, settings), prediction, today),
+    [model.history, logs, settings, prediction, today]
+  );
 
-  if (loading || !prediction) {
+  if (loading) {
     return (
       <PinGate>
         <div className="flex min-h-screen bg-base dark:bg-base-dark">
@@ -116,8 +44,8 @@ export default function DashboardPage() {
   }
 
   const fertility = getDayFertility(selectedDate, prediction, settings, prediction.lastPeriodStart);
-  const isToday = selectedDate === todayISO();
-  const isFuture = selectedDate > todayISO();
+  const isToday = selectedDate === today;
+  const isFuture = selectedDate > today;
   const logButtonLabel = isToday
     ? "+ Log today"
     : `+ Log ${formatISODate(selectedDate, { month: "short", day: "numeric" })}`;
@@ -130,6 +58,10 @@ export default function DashboardPage() {
     setFutureDateMessage(null);
     setShowModal(true);
   };
+
+  const nextPeriodValue = prediction.daysLate > 0
+    ? `${prediction.daysLate}d late`
+    : formatISODate(prediction.nextPeriodStart, { month: "short", day: "numeric" });
 
   return (
     <PinGate>
@@ -151,17 +83,22 @@ export default function DashboardPage() {
 
           <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-1 space-y-6">
-              <CycleDial prediction={prediction} cycleLength={settings.avgCycleLength} />
+              <CycleDial prediction={prediction} settings={settings} />
               <div className="neo-card p-6 space-y-3">
                 <h3 className="font-display text-lg">Overview</h3>
-                <Stat label="Next period" value={formatISODate(prediction.nextPeriodStart, { month: "short", day: "numeric" })} />
-                <Stat label="Ovulation" value={formatISODate(prediction.ovulationDate, { month: "short", day: "numeric" })} />
+                <Stat label="Next period" value={nextPeriodValue} />
+                <Stat
+                  label={prediction.ovulationSource === "bbt" ? "Ovulation (confirmed)" : "Ovulation"}
+                  value={formatISODate(prediction.ovulationDate, { month: "short", day: "numeric" })}
+                />
                 <Stat label="Avg cycle length" value={`${prediction.cycleLengthUsed} days`} />
+                <Stat label="Avg period length" value={`${settings.avgPeriodLength} days${settings.periodLengthLearned ? "" : " (est.)"}`} />
                 <Stat label="Prediction confidence" value={prediction.confidence} />
               </div>
             </div>
 
             <div className="lg:col-span-2 space-y-6">
+              <TodayCard prediction={prediction} settings={settings} goal={goal} headsUp={headsUp} today={today} />
               <Calendar
                 prediction={prediction}
                 settings={settings}
@@ -172,16 +109,16 @@ export default function DashboardPage() {
               {/* Tap any day above (past or future) to select it — the insight
                   panel always reflects the selected day, but logging is only
                   allowed for today or earlier. */}
-              <DailyInsight fertility={fertility} loggedEntry={logsByDate[selectedDate] ?? null} />
+              <DailyInsight fertility={fertility} loggedEntry={entries[selectedDate] ?? null} ovulationSource={prediction.ovulationSource} />
             </div>
           </section>
 
           {showModal && (
             <LogPeriodModal
               date={selectedDate}
-              existingEntry={logsByDate[selectedDate] ?? null}
+              existingEntry={entries[selectedDate] ?? null}
               onClose={() => setShowModal(false)}
-              onSaved={loadData}
+              onSaved={reload}
             />
           )}
         </main>

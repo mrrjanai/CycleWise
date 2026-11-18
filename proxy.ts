@@ -29,6 +29,8 @@ export async function proxy(request: NextRequest) {
                             request.nextUrl.pathname.startsWith("/onboarding") ||
                             request.nextUrl.pathname.startsWith("/profile") ||
                             request.nextUrl.pathname.startsWith("/cycles") ||
+                            request.nextUrl.pathname.startsWith("/insights") ||
+                            request.nextUrl.pathname.startsWith("/report") ||
                             request.nextUrl.pathname.startsWith("/settings");
 
   if (!user && isProtectedRoute) {

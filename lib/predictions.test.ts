@@ -73,10 +73,51 @@ describe("predictCycle", () => {
     expect(p.currentCycleDay).toBe(13);
   });
 
-  it("starts a new cycle on the predicted day", () => {
+  it("treats the predicted day as 'due today' until a new period is logged", () => {
     const p = predictCycle([{ startDate: "2026-03-01" }], settings, "2026-03-29");
-    expect(p.currentCycleDay).toBe(1);
-    expect(p.nextPeriodStart).toBe("2026-04-26");
+    expect(p.currentCycleDay).toBe(29);
+    expect(p.nextPeriodStart).toBe("2026-03-29");
+    expect(p.daysLate).toBe(0);
+  });
+
+  it("reports a late period and expects it from today", () => {
+    const p = predictCycle([{ startDate: "2026-03-01" }], settings, "2026-04-02");
+    expect(p.daysLate).toBe(4);
+    expect(p.currentCycleDay).toBe(33);
+    expect(p.currentCycleStart).toBe("2026-03-01");
+    expect(p.nextPeriodStart).toBe("2026-04-02");
+  });
+
+  it("stops reporting late after 14 days and projects forward instead", () => {
+    const p = predictCycle([{ startDate: "2026-03-01" }], settings, "2026-04-13"); // 15 days past Mar 29
+    expect(p.daysLate).toBe(0);
+    expect(p.currentCycleStart).toBe("2026-03-29");
+    expect(p.currentCycleDay).toBe(16);
+  });
+
+  it("places ovulation one luteal phase before the next period", () => {
+    const long = predictCycle([{ startDate: "2026-03-01" }], { ...settings, avgCycleLength: 35 }, "2026-03-02");
+    expect(long.ovulationCycleDay).toBe(21);
+    expect(long.ovulationDate).toBe("2026-03-21");
+    const short = predictCycle([{ startDate: "2026-03-01" }], { ...settings, avgCycleLength: 24, lutealPhaseLength: 12 }, "2026-03-02");
+    expect(short.ovulationCycleDay).toBe(12);
+  });
+
+  it("uses an observed ovulation to move the window and the next period", () => {
+    const observed = { date: "2026-03-18", method: "bbt" as const, confirmed: true };
+    const p = predictCycle([{ startDate: "2026-03-01" }], settings, "2026-03-21", observed);
+    expect(p.ovulationDate).toBe("2026-03-18");
+    expect(p.ovulationSource).toBe("bbt");
+    expect(p.fertileWindowStart).toBe("2026-03-14");
+    expect(p.fertileWindowEnd).toBe("2026-03-19"); // closes a day after an observed ovulation
+    expect(p.nextPeriodStart).toBe("2026-04-02"); // 18 Mar + 14 luteal + 1
+  });
+
+  it("ignores an observed ovulation from before the latest period", () => {
+    const observed = { date: "2026-02-14", method: "lh" as const, confirmed: false };
+    const p = predictCycle([{ startDate: "2026-03-01" }], settings, "2026-03-05", observed);
+    expect(p.ovulationSource).toBe("calendar");
+    expect(p.ovulationDate).toBe("2026-03-14");
   });
 
   it("handles cycles spanning a year boundary and leap day", () => {

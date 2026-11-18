@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { DayFertility, formatISODate } from "@/lib/predictions";
+import { DayFertility, formatISODate, type OvulationSource } from "@/lib/predictions";
 
 export interface LoggedEntry {
   flow_intensity?: string | null;
@@ -9,6 +9,7 @@ export interface LoggedEntry {
   mood?: string[] | null;
   sexual_activity?: { occurred?: boolean; protection?: string | null } | null;
   basal_body_temp?: number | null;
+  cervical_mucus?: string | null;
   medications?: { name: string; dose: string }[] | null;
   tests?: { type: string; result: string }[] | null;
   notes?: string | null;
@@ -17,12 +18,28 @@ export interface LoggedEntry {
 interface DailyInsightProps {
   fertility: DayFertility;
   loggedEntry?: LoggedEntry | null;
+  ovulationSource?: OvulationSource;
 }
+
+export const MUCUS_LABELS: Record<string, string> = {
+  dry: "Dry",
+  sticky: "Sticky",
+  creamy: "Creamy",
+  watery: "Watery",
+  egg_white: "Egg white",
+};
+
+const OVULATION_BASIS: Record<OvulationSource, string> = {
+  calendar: "estimated here from your average cycle length",
+  bbt: "confirmed here by the rise in your basal body temperature",
+  lh: "estimated here from your positive ovulation (LH) test",
+  mucus: "estimated here from your cervical mucus peak",
+};
 
 const ZONE_COPY: Record<DayFertility["zone"], { title: string; blurb: string }> = {
   period: { title: "Period day", blurb: "Bleeding phase of the cycle. Pregnancy is very unlikely on a typical period day, but not impossible in unusually short cycles." },
   fertile: { title: "Fertile window", blurb: "Sperm can survive up to 5 days, so days leading into and just after ovulation carry real conception risk if sex is unprotected." },
-  ovulation: { title: "Ovulation day", blurb: "The egg is released and viable for roughly 12–24 hours — this is the single highest-probability day in the cycle, estimated here as day 14 of the cycle." },
+  ovulation: { title: "Ovulation day", blurb: "The egg is released and viable for roughly 12–24 hours — this is the single highest-probability day in the cycle." },
   luteal: { title: "Low-fertility day", blurb: "Outside the estimated fertile window. Risk is low but this is a statistical estimate, not a guarantee." },
   low: { title: "Low-fertility day", blurb: "Outside the estimated fertile window. Risk is low but this is a statistical estimate, not a guarantee." },
 };
@@ -33,9 +50,11 @@ const TOOLTIPS: Record<string, string> = {
   bbt: "Basal body temperature (BBT) is your resting temperature taken first thing in the morning. It rises slightly (~0.3–0.5°C) after ovulation due to progesterone, which can help confirm ovulation happened after the fact.",
 };
 
-export default function DailyInsight({ fertility, loggedEntry }: DailyInsightProps) {
+export default function DailyInsight({ fertility, loggedEntry, ovulationSource = "calendar" }: DailyInsightProps) {
   const [openTip, setOpenTip] = useState<string | null>(null);
-  const copy = ZONE_COPY[fertility.zone];
+  const copy = fertility.zone === "ovulation"
+    ? { ...ZONE_COPY.ovulation, blurb: `${ZONE_COPY.ovulation.blurb} It's ${OVULATION_BASIS[ovulationSource]}.` }
+    : ZONE_COPY[fertility.zone];
 
   const hasLoggedData =
     loggedEntry &&
@@ -44,6 +63,7 @@ export default function DailyInsight({ fertility, loggedEntry }: DailyInsightPro
       (loggedEntry.mood && loggedEntry.mood.length > 0) ||
       loggedEntry.sexual_activity?.occurred ||
       loggedEntry.basal_body_temp ||
+      loggedEntry.cervical_mucus ||
       (loggedEntry.medications && loggedEntry.medications.length > 0) ||
       (loggedEntry.tests && loggedEntry.tests.length > 0) ||
       loggedEntry.notes);
@@ -72,6 +92,9 @@ export default function DailyInsight({ fertility, loggedEntry }: DailyInsightPro
           )}
           {loggedEntry?.basal_body_temp && (
             <p className="text-sm"><span className="text-ink-muted dark:text-ink-muted-dark">BBT:</span> {loggedEntry.basal_body_temp}°C</p>
+          )}
+          {loggedEntry?.cervical_mucus && (
+            <p className="text-sm"><span className="text-ink-muted dark:text-ink-muted-dark">Cervical mucus:</span> {MUCUS_LABELS[loggedEntry.cervical_mucus] ?? loggedEntry.cervical_mucus}</p>
           )}
           {loggedEntry?.medications && loggedEntry.medications.length > 0 && (
             <p className="text-sm"><span className="text-ink-muted dark:text-ink-muted-dark">Medications:</span> {loggedEntry.medications.map((m) => `${m.name}${m.dose ? ` (${m.dose})` : ""}`).join(", ")}</p>

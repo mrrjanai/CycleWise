@@ -31,15 +31,27 @@ Private, empowering cycle & fertility tracking — web (Next.js) + mobile (Expo/
 - **Data ownership**: every table is scoped by Postgres RLS to `auth.uid()`, enforced at the database layer — not just in application code.
 - **Shared logic**: `lib/predictions.ts` is pure, dependency-free TypeScript, copied (or workspace-shared) into both apps so web and mobile never disagree on a prediction.
 - **Offline**: mobile queues writes locally (AsyncStorage) when offline and flushes them on reconnect; web relies on standard browser caching + can be extended with a service worker for full offline support.
-- **Route protection**: `proxy.ts` (Next.js 16's name for middleware) refreshes the Supabase session on every request and redirects logged-out visitors away from `/dashboard`, `/onboarding`, `/cycles`, `/profile` and `/settings`. API routes return `401` without a session.
+- **Route protection**: `proxy.ts` (Next.js 16's name for middleware) refreshes the Supabase session on every request and redirects logged-out visitors away from `/dashboard`, `/onboarding`, `/cycles`, `/insights`, `/report`, `/profile` and `/settings`. API routes return `401` without a session.
+
+## Features
+
+- **Dashboard**: cycle dial, colour-coded calendar, and a *Today* card with your phase, a tip, a late-period notice, ovulation signals, "heads up" warnings for symptoms you usually get around now, and guidance for your goal (trying to conceive, avoiding pregnancy, on birth control).
+- **Daily log**: flow, symptoms, mood, sex, basal body temperature, cervical mucus, medications, ovulation/pregnancy tests and notes.
+- **Insights** (`/insights`): learned period and luteal-phase lengths, cycle health checks, recurring symptom/mood patterns, and a BBT chart with coverline and ovulation marker.
+- **Doctor report** (`/report`): a printable one-page summary of recent cycles, flags and patterns, generated on-device.
+- **Privacy**: RLS on every table, optional app PIN, and full data export / account deletion on the Profile page.
 
 ## Prediction model
 
-`lib/predictions.ts` is a deliberately simple, transparent calendar model:
+`lib/predictions.ts` (predictions) and `lib/insights.ts` (history, signals, patterns) are pure, transparent and fully unit-tested:
 
-- **Cycle length**: rolling average of the last 6 logged cycles (15–60 days only), 28 by default. The spread (std dev) and number of cycles set a `high` / `medium` / `low` confidence.
-- **Ovulation**: cycle day 14, with a fertile window of ±4 days around it.
-- **Future cycles are projected** by repeating the average length, so the calendar shows next month's period, fertile window and ovulation too, and the current cycle rolls forward if a new period hasn't been logged yet.
+- **Cycle history is rebuilt from what was logged**: period starts come from the `cycles` table plus logged bleeding, and starts within 10 days of each other are merged, so duplicate rows can't skew averages. Period length is counted from logged flow.
+- **Cycle length**: rolling average of the last 6 cycles (15–60 days only), 28 by default. The spread (std dev) and number of cycles set a `high` / `medium` / `low` confidence.
+- **Ovulation**: one luteal phase before the next period (`cycle length − luteal length`, so day 14 for a 28-day cycle), with a fertile window of ±4 days.
+- **Body signals override the calendar**: a BBT shift (3-over-6 rule, which confirms ovulation), a positive LH test (ovulation ≈ next day) or a cervical-mucus peak moves this cycle's ovulation, closes the fertile window a day after it, and re-predicts the next period as ovulation + luteal length.
+- **Personalisation**: after 2 cycles of evidence, your own period length and luteal length (from LH/BBT) replace the defaults.
+- **Late periods**: a period that hasn't been logged is reported as late for up to 14 days. After that, cycles are projected forward from the last logged period (assumes you stopped logging).
+- **Health checks** use commonly cited ranges (21–35 day cycles, ≤ 7-day periods, ≥ 10 days variation = irregular) and are worded as prompts to talk to a clinician, not diagnoses.
 - **Dates are timezone-safe**: all math runs in UTC on `YYYY-MM-DD` strings and "today" comes from the user's local calendar. Tests run in UTC and Africa/Nairobi in CI.
 
 ## Repo layout
@@ -47,11 +59,14 @@ Private, empowering cycle & fertility tracking — web (Next.js) + mobile (Expo/
 cyclewise/
   supabase/                 # schema.sql + migration_002 + migration_003 (run in order)
   lib/predictions.ts        # cycle prediction & fertility engine (+ predictions.test.ts)
+  lib/insights.ts           # cycle history, ovulation signals, health checks, patterns (+ insights.test.ts)
+  lib/useCycleData.ts       # client hook: loads profile/cycles/logs and builds the model
+  lib/phaseTips.ts          # per-phase summaries and tips
   lib/pinLock.ts            # app PIN hashing + per-session unlock
   lib/supabase/             # web Supabase clients (browser + server)
   proxy.ts                  # session refresh + route protection
-  app/                      # landing, auth, onboarding, dashboard, cycles, profile, settings, terms, privacy + API routes
-  components/               # CycleDial, Calendar, DailyInsight, LogPeriodModal, Sidebar, Navbar, PinGate
+  app/                      # landing, auth, onboarding, dashboard, cycles, insights, report, profile, settings, terms, privacy + API routes
+  components/               # CycleDial, Calendar, DailyInsight, TodayCard, LogPeriodModal, Sidebar, Navbar, PinGate
   mobile/                   # Expo app (App.tsx, screens/, lib/, theme.ts)
   .github/workflows/        # CI (lint, typecheck, tests, build) + Supabase keep-alive
   docs/                     # setup guide, testing & privacy plan

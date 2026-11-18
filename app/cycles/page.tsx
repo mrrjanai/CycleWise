@@ -1,87 +1,69 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { createClient } from "@/lib/supabase/client";
-import { predictCycle, formatISODate, CycleRecord, CyclePrediction, UserFertilitySettings } from "@/lib/predictions";
+import { formatISODate } from "@/lib/predictions";
+import { useCycleData, type TrackingGoal } from "@/lib/useCycleData";
 import Sidebar from "@/components/Sidebar";
 
-interface CycleRow {
-  id: string;
-  start_date: string;
-  end_date: string | null;
-  cycle_length: number | null;
-  period_length: number | null;
-}
+const GOALS: { value: TrackingGoal; label: string; hint: string }[] = [
+  { value: "general", label: "Just tracking", hint: "Periods, symptoms and patterns." },
+  { value: "conceive", label: "Trying to conceive", hint: "Best days to try and when to start LH tests." },
+  { value: "avoid_pregnancy", label: "Avoiding pregnancy", hint: "Higher-risk days, with a reminder to use protection." },
+  { value: "contraception", label: "On birth control", hint: "Bleeding and symptom history; fertility estimates may not apply." },
+];
 
 export default function CyclesPage() {
-  const supabase = createClient();
-  const router = useRouter();
-
-  const [cycles, setCycles] = useState<CycleRow[]>([]);
-  const [prediction, setPrediction] = useState<CyclePrediction | null>(null);
-  const [regularity, setRegularity] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const supabase = useMemo(() => createClient(), []);
+  const { loading, model, prediction, goal, regularity, profileSettings, reload } = useCycleData();
+  const history = model.history;
 
   // Editable settings form state
   const [editCycleLength, setEditCycleLength] = useState(28);
   const [editPeriodLength, setEditPeriodLength] = useState(5);
   const [editRegularity, setEditRegularity] = useState<"regular" | "irregular">("regular");
+  const [editGoal, setEditGoal] = useState<TrackingGoal>("general");
   const [savingSettings, setSavingSettings] = useState(false);
   const [settingsSaved, setSettingsSaved] = useState(false);
+  const [settingsError, setSettingsError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { router.push("/login"); return; }
-
-    const [{ data: profile }, { data: cycleRows }] = await Promise.all([
-      supabase.from("profiles").select("avg_cycle_length, avg_period_length, luteal_phase_length, cycle_regularity").eq("id", user.id).single(),
-      supabase.from("cycles").select("id, start_date, end_date, cycle_length, period_length").eq("user_id", user.id).order("start_date", { ascending: false }),
-    ]);
-
-    const s: UserFertilitySettings = {
-      avgCycleLength: profile?.avg_cycle_length ?? 28,
-      lutealPhaseLength: profile?.luteal_phase_length ?? 14,
-      avgPeriodLength: profile?.avg_period_length ?? 5,
-    };
-    setEditCycleLength(s.avgCycleLength);
-    setEditPeriodLength(s.avgPeriodLength);
-    setRegularity(profile?.cycle_regularity ?? null);
-    setEditRegularity((profile?.cycle_regularity as "regular" | "irregular") ?? "regular");
-
-    const rows = cycleRows ?? [];
-    setCycles(rows);
-
-    const records: CycleRecord[] = rows.map((c) => ({ startDate: c.start_date, cycleLength: c.cycle_length, periodLength: c.period_length }));
-    setPrediction(predictCycle(records, s));
-    setLoading(false);
-  }, [supabase, router]);
-
-  // Data fetch on mount: state is only set after the awaited queries resolve.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { load(); }, [load]);
+  // Sync the form once the profile has loaded.
+  useEffect(() => {
+    if (loading) return;
+    // The stored settings, not the learned values, are what this form edits.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setEditCycleLength(profileSettings.avgCycleLength);
+    setEditPeriodLength(profileSettings.avgPeriodLength);
+    setEditRegularity((regularity as "regular" | "irregular") ?? "regular");
+    setEditGoal(goal);
+    // Only on load, not on every model recompute.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
 
   const saveSettings = async () => {
     setSavingSettings(true);
     setSettingsSaved(false);
+    setSettingsError(null);
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    await supabase.from("profiles").update({
+    if (!user) { setSavingSettings(false); return; }
+    const { error } = await supabase.from("profiles").update({
       avg_cycle_length: editCycleLength,
       avg_period_length: editPeriodLength,
       cycle_regularity: editRegularity,
+      tracking_goal: editGoal,
     }).eq("id", user.id);
     setSavingSettings(false);
+    if (error) { setSettingsError(error.message); return; }
     setSettingsSaved(true);
-    load();
+    reload();
     setTimeout(() => setSettingsSaved(false), 2000);
   };
 
-  const chartData = [...cycles]
-    .filter((c) => c.cycle_length)
+  const chartData = [...history]
+    .filter((c) => c.cycleLength)
     .reverse()
-    .map((c) => ({ date: formatISODate(c.start_date, { month: "short", day: "numeric" }), length: c.cycle_length }));
+    .map((c) => ({ date: formatISODate(c.startDate, { month: "short", day: "numeric" }), length: c.cycleLength }));
 
   if (loading) {
     return (
@@ -101,14 +83,15 @@ export default function CyclesPage() {
         <h1 className="font-display text-3xl">Cycles</h1>
 
         {/* Upcoming */}
-        {prediction && (
-          <div className="neo-card p-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <Stat label="Next period" value={formatISODate(prediction.nextPeriodStart, { month: "short", day: "numeric" })} />
-            <Stat label="Ovulation" value={formatISODate(prediction.ovulationDate, { month: "short", day: "numeric" })} />
-            <Stat label="Avg cycle length" value={`${prediction.cycleLengthUsed}d`} />
-            <Stat label="Regularity" value={regularity ?? "—"} />
-          </div>
-        )}
+        <div className="neo-card p-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <Stat
+            label="Next period"
+            value={prediction.daysLate > 0 ? `${prediction.daysLate}d late` : formatISODate(prediction.nextPeriodStart, { month: "short", day: "numeric" })}
+          />
+          <Stat label="Ovulation" value={formatISODate(prediction.ovulationDate, { month: "short", day: "numeric" })} />
+          <Stat label="Avg cycle length" value={`${prediction.cycleLengthUsed}d`} />
+          <Stat label="Regularity" value={regularity ?? "—"} />
+        </div>
 
         {/* Chart */}
         <div className="neo-card p-6">
@@ -135,23 +118,23 @@ export default function CyclesPage() {
         {/* History */}
         <div className="neo-card p-6">
           <h2 className="font-display text-lg mb-4">Cycle history</h2>
-          {cycles.length === 0 ? (
+          {history.length === 0 ? (
             <p className="text-sm text-ink-muted dark:text-ink-muted-dark">No cycles logged yet.</p>
           ) : (
             <div className="space-y-2">
-              {cycles.map((c) => (
-                <div key={c.id} className="neo-inset rounded-neo p-4 flex items-center justify-between text-sm">
+              {history.map((c) => (
+                <div key={c.startDate} className="neo-inset rounded-neo p-4 flex items-center justify-between text-sm">
                   <div>
                     <p className="font-medium">
-                      {formatISODate(c.start_date, { month: "short", day: "numeric", year: "numeric" })}
-                      {c.end_date && ` – ${formatISODate(c.end_date, { month: "short", day: "numeric" })}`}
+                      {formatISODate(c.startDate, { month: "short", day: "numeric", year: "numeric" })}
                     </p>
                     <p className="text-ink-muted dark:text-ink-muted-dark text-xs mt-0.5">
-                      {c.period_length ? `${c.period_length} day period` : "Period length not recorded"}
+                      {c.periodLength ? `${c.periodLength} day period` : "Period length not recorded"}
+                      {c.ovulation && ` · ovulation ${formatISODate(c.ovulation.date, { month: "short", day: "numeric" })}`}
                     </p>
                   </div>
                   <span className="font-mono text-ink-muted dark:text-ink-muted-dark">
-                    {c.cycle_length ? `${c.cycle_length}d cycle` : "current"}
+                    {c.cycleLength ? `${c.cycleLength}d cycle` : "current"}
                   </span>
                 </div>
               ))}
@@ -163,8 +146,25 @@ export default function CyclesPage() {
         <div className="neo-card p-6 space-y-4">
           <h2 className="font-display text-lg">Cycle settings</h2>
           <p className="text-sm text-ink-muted dark:text-ink-muted-dark">
-            These power your predictions. Update them any time your averages change.
+            These power your predictions until you&apos;ve logged enough cycles for CycleWise to learn your own averages.
           </p>
+
+          <div>
+            <label className="text-xs uppercase tracking-wide text-ink-muted dark:text-ink-muted-dark mb-1 block">Your goal</label>
+            <div className="grid sm:grid-cols-2 gap-2">
+              {GOALS.map((g) => (
+                <button
+                  key={g.value}
+                  onClick={() => setEditGoal(g.value)}
+                  aria-pressed={editGoal === g.value}
+                  className={`neo-btn px-4 py-3 text-left ${editGoal === g.value ? "neo-pressed ring-2 ring-violet" : ""}`}
+                >
+                  <span className="block text-sm font-medium">{g.label}</span>
+                  <span className="block text-xs text-ink-muted dark:text-ink-muted-dark mt-0.5">{g.hint}</span>
+                </button>
+              ))}
+            </div>
+          </div>
 
           <div>
             <label className="text-xs uppercase tracking-wide text-ink-muted dark:text-ink-muted-dark mb-1 block">Average cycle length (days)</label>
@@ -192,6 +192,7 @@ export default function CyclesPage() {
             </div>
           </div>
 
+          {settingsError && <p className="text-sm text-rose">{settingsError}</p>}
           <button onClick={saveSettings} disabled={savingSettings} className="neo-btn px-5 py-2.5 text-sm font-medium bg-gradient-to-br from-rose to-violet text-white disabled:opacity-60">
             {savingSettings ? "Saving…" : settingsSaved ? "Saved ✓" : "Save settings"}
           </button>

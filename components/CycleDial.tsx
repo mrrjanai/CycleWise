@@ -1,10 +1,11 @@
 "use client";
 
-import { CyclePrediction, OVULATION_CYCLE_DAY } from "@/lib/predictions";
+import { currentPhase, type CyclePrediction, type UserFertilitySettings } from "@/lib/predictions";
+import { PHASE_INFO } from "@/lib/phaseTips";
 
 interface CycleDialProps {
   prediction: CyclePrediction;
-  cycleLength: number;
+  settings: UserFertilitySettings;
 }
 
 /**
@@ -16,7 +17,8 @@ interface CycleDialProps {
  * number; the arc color eases from rose (period) through violet (follicular)
  * to peak magenta (ovulation) and back, giving an at-a-glance phase read.
  */
-export default function CycleDial({ prediction, cycleLength }: CycleDialProps) {
+export default function CycleDial({ prediction, settings }: CycleDialProps) {
+  const cycleLength = prediction.cycleLengthUsed;
   const day = prediction.currentCycleDay ?? 1;
   const progress = Math.min(day / cycleLength, 1);
 
@@ -26,10 +28,11 @@ export default function CycleDial({ prediction, cycleLength }: CycleDialProps) {
   const circumference = 2 * Math.PI * radius;
   const dashOffset = circumference * (1 - progress);
 
-  const phaseLabel =
-    day <= (prediction.lastPeriodStart ? 5 : 0) ? "Menstrual phase" :
-    day === OVULATION_CYCLE_DAY ? "Ovulation" :
-    day < OVULATION_CYCLE_DAY ? "Follicular phase" : "Luteal phase";
+  const phase = currentPhase(prediction, settings);
+  const late = prediction.daysLate;
+  const caption = late > 0
+    ? `Period ${late} day${late === 1 ? "" : "s"} late`
+    : phase ? PHASE_INFO[phase].name : "Log a period to start";
 
   return (
     <div className="neo-card p-8 flex flex-col items-center gap-4" role="group" aria-label="Cycle progress">
@@ -60,11 +63,11 @@ export default function CycleDial({ prediction, cycleLength }: CycleDialProps) {
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span className="font-mono text-xs text-ink-muted dark:text-ink-muted-dark tracking-widest">DAY</span>
-          <span className="font-display text-5xl leading-none">{day}</span>
+          <span className="font-display text-5xl leading-none">{prediction.currentCycleDay ?? "–"}</span>
           <span className="font-mono text-xs text-ink-muted dark:text-ink-muted-dark mt-1">of {cycleLength}</span>
         </div>
       </div>
-      <p className="text-sm text-ink-muted dark:text-ink-muted-dark">{phaseLabel}</p>
+      <p className={`text-sm ${late > 0 ? "text-amber font-medium" : "text-ink-muted dark:text-ink-muted-dark"}`}>{caption}</p>
     </div>
   );
 }

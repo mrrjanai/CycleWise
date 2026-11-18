@@ -2,11 +2,17 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { formatISODate, localDateISO } from "@/lib/predictions";
-import { LoggedEntry } from "@/components/DailyInsight";
+import { addDays, formatISODate, localDateISO } from "@/lib/predictions";
+import { LoggedEntry, MUCUS_LABELS } from "@/components/DailyInsight";
 
-const SYMPTOMS = ["Cramps", "Headache", "Bloating", "Fatigue", "Tender breasts", "Acne", "Backache"];
-const MOODS = ["Happy", "Anxious", "Irritable", "Calm", "Sad", "Energetic"];
+const SYMPTOMS = [
+  "Cramps", "Headache", "Bloating", "Fatigue", "Tender breasts", "Acne", "Backache",
+  "Pelvic pain", "Nausea", "Cravings", "Insomnia", "Low energy", "Diarrhea", "Constipation",
+];
+const MOODS = ["Happy", "Calm", "Energetic", "Anxious", "Irritable", "Sad", "Mood swings", "Stressed"];
+const MUCUS = ["dry", "sticky", "creamy", "watery", "egg_white"] as const;
+/** Logged bleeding within this many days of an existing period start belongs to that period. */
+const SAME_PERIOD_DAYS = 9;
 // "none" removed — a day with no flow selected simply isn't a period day.
 // Tap a selected flow again to deselect it (e.g. to undo a mistaken entry).
 const FLOWS = ["spotting", "light", "medium", "heavy"] as const;
@@ -41,6 +47,7 @@ export default function LogPeriodModal({ date, existingEntry, onClose, onSaved }
   const [sexActivity, setSexActivity] = useState(!!existingEntry?.sexual_activity?.occurred);
   const [protection, setProtection] = useState(existingEntry?.sexual_activity?.protection || "none");
   const [bbt, setBbt] = useState(existingEntry?.basal_body_temp ? String(existingEntry.basal_body_temp) : "");
+  const [mucus, setMucus] = useState<string | null>(existingEntry?.cervical_mucus ?? null);
   const [notes, setNotes] = useState(existingEntry?.notes || "");
 
   const [medications, setMedications] = useState<Medication[]>(existingEntry?.medications ?? []);
@@ -92,6 +99,7 @@ export default function LogPeriodModal({ date, existingEntry, onClose, onSaved }
     (existingEntry.mood && existingEntry.mood.length > 0) ||
     existingEntry.sexual_activity?.occurred ||
     existingEntry.basal_body_temp ||
+    existingEntry.cervical_mucus ||
     (existingEntry.medications && existingEntry.medications.length > 0) ||
     (existingEntry.tests && existingEntry.tests.length > 0) ||
     existingEntry.notes
@@ -100,6 +108,11 @@ export default function LogPeriodModal({ date, existingEntry, onClose, onSaved }
   const save = async () => {
     if (isFutureDate) {
       setError("You can't log a day that hasn't happened yet — the most recent day you can log is today.");
+      return;
+    }
+    const temp = bbt ? parseFloat(bbt) : null;
+    if (temp != null && (Number.isNaN(temp) || temp < 35 || temp > 38.5)) {
+      setError("Enter your temperature in °C, e.g. 36.55.");
       return;
     }
     setSaving(true);
@@ -116,7 +129,8 @@ export default function LogPeriodModal({ date, existingEntry, onClose, onSaved }
           symptoms: JSON.stringify(symptoms),
           mood: JSON.stringify(mood),
           sexual_activity: JSON.stringify({ occurred: sexActivity, protection: sexActivity ? protection : null }),
-          basal_body_temp: bbt ? parseFloat(bbt) : null,
+          basal_body_temp: temp,
+          cervical_mucus: mucus,
           medications: JSON.stringify(medications),
           tests: JSON.stringify(tests),
           notes: notes || null,
@@ -125,11 +139,25 @@ export default function LogPeriodModal({ date, existingEntry, onClose, onSaved }
       );
       if (upsertError) throw upsertError;
 
-      // Only create a new cycle row the first time flow is set for this date.
-      if (flow && !initialFlow) {
-        await supabase.from("cycles").insert({ user_id: user.id, start_date: date }).select().maybeSingle();
-        // Note: in production, check for an existing nearby cycle before inserting
-        // to avoid duplicate cycle rows — omitted here for brevity.
+      // The first bleeding day of a period starts a new cycle. Later days of
+      // the same period don't, and logging a day before an existing start
+      // moves that start back instead of creating a second cycle.
+      if (flow && flow !== "spotting" && !initialFlow) {
+        const { data: nearby } = await supabase
+          .from("cycles")
+          .select("id, start_date")
+          .eq("user_id", user.id)
+          .gte("start_date", addDays(date, -SAME_PERIOD_DAYS))
+          .lte("start_date", addDays(date, SAME_PERIOD_DAYS))
+          .order("start_date", { ascending: true });
+        const rows = nearby ?? [];
+        const continuesPeriod = rows.some((c) => c.start_date <= date);
+        const laterStart = rows.find((c) => c.start_date > date);
+        if (!continuesPeriod && laterStart) {
+          await supabase.from("cycles").update({ start_date: date }).eq("id", laterStart.id);
+        } else if (!continuesPeriod) {
+          await supabase.from("cycles").insert({ user_id: user.id, start_date: date });
+        }
       }
       // If the user removed a flow that used to mark a period start, clean up
       // the matching cycle row so predictions don't stay anchored to it.
@@ -288,7 +316,31 @@ export default function LogPeriodModal({ date, existingEntry, onClose, onSaved }
 
             <section>
               <label htmlFor="bbt" className="text-xs uppercase tracking-wide text-ink-muted dark:text-ink-muted-dark mb-2 block">Basal body temp (°C)</label>
-              <input id="bbt" type="number" step="0.01" value={bbt} onChange={(e) => setBbt(e.target.value)} className="neo-inset-sm rounded-neo w-full p-3 bg-transparent outline-none border border-ink-muted/25" placeholder="36.60" />
+              <input id="bbt" type="number" step="0.01" min={35} max={38.5} value={bbt} onChange={(e) => setBbt(e.target.value)} className="neo-inset-sm rounded-neo w-full p-3 bg-transparent outline-none border border-ink-muted/25" placeholder="36.60" />
+              <p className="text-xs text-ink-muted dark:text-ink-muted-dark mt-1.5">
+                Take it on waking, before getting up. A few days of readings let CycleWise confirm ovulation.
+              </p>
+            </section>
+
+            <section>
+              <p className="text-xs uppercase tracking-wide text-ink-muted dark:text-ink-muted-dark mb-2">
+                Cervical mucus {mucus && <span className="normal-case">(tap again to clear)</span>}
+              </p>
+              <div className="flex gap-2 flex-wrap">
+                {MUCUS.map((m) => (
+                  <button
+                    key={m}
+                    onClick={() => setMucus(mucus === m ? null : m)}
+                    aria-pressed={mucus === m}
+                    className={`neo-btn px-3 py-1.5 text-sm ${mucus === m ? "neo-pressed" : ""}`}
+                  >
+                    {MUCUS_LABELS[m]}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-ink-muted dark:text-ink-muted-dark mt-1.5">
+                Clear, stretchy &ldquo;egg white&rdquo; mucus is a sign ovulation is close.
+              </p>
             </section>
 
             <section>
